@@ -1,0 +1,23 @@
+# OpenAPI Generator Ignore File
+# Files to ignore when generating code from openapi.yaml
+
+# Don't overwrite these files
+README.md
+package.json
+.gitignore
+.env
+
+# Don't generate documentation (we have custom docs)
+docs/**
+
+# Keep our custom implementation
+src/**
+
+# Keep our tests
+tests/**
+
+# Keep config files
+.eslintrc.js
+.prettierrc
+tsconfig.json
+
