@@ -1,0 +1,190 @@
+/**
+ * In-Memory Database
+ * Stores accounts and transactions in memory
+ * In production, this would be replaced with a real database (PostgreSQL, MongoDB, etc.)
+ */
+
+const { v4: uuidv4 } = require('uuid');
+const Account = require('../models/Account');
+const Transaction = require('../models/Transaction');
+
+class Database {
+  constructor() {
+    this.accounts = new Map();
+    this.transactions = new Map();
+    this.apiKeys = new Set(['1234']); // Default API key
+    this.initializeSampleData();
+  }
+
+  /**
+   * Initialize with sample data for testing
+   */
+  initializeSampleData() {
+    // Create sample accounts
+    const account1 = new Account('1', 'Nova Newman', 10000, 'COSMIC_COINS', '2023-04-10');
+    const account2 = new Account('2', 'Gary Galaxy', 237, 'COSMIC_COINS', '2023-04-10');
+    const account3 = new Account('3', 'Luna Starlight', 5000, 'GALAXY_GOLD', '2024-01-10');
+    
+    this.accounts.set('1', account1);
+    this.accounts.set('2', account2);
+    this.accounts.set('3', account3);
+
+    // Create sample transactions
+    const transaction1 = new Transaction('1', '1', '2', 10000, 'COSMIC_COINS', '2024-01-10');
+    this.transactions.set('1', transaction1);
+  }
+
+  // ============ Account Operations ============
+
+  /**
+   * Get all accounts with optional filters
+   * @param {Object} filters - Optional filters (owner, createdAt)
+   * @returns {Array<Account>}
+   */
+  getAccounts(filters = {}) {
+    let accounts = Array.from(this.accounts.values());
+
+    if (filters.owner) {
+      accounts = accounts.filter(acc => acc.owner.toLowerCase().includes(filters.owner.toLowerCase()));
+    }
+
+    if (filters.createdAt) {
+      accounts = accounts.filter(acc => acc.createdAt === filters.createdAt);
+    }
+
+    return accounts;
+  }
+
+  /**
+   * Get account by ID
+   * @param {string} accountId
+   * @returns {Account|null}
+   */
+  getAccountById(accountId) {
+    return this.accounts.get(accountId) || null;
+  }
+
+  /**
+   * Create new account
+   * @param {Object} accountData
+   * @returns {Account}
+   */
+  createAccount(accountData) {
+    const accountId = uuidv4().split('-')[0]; // Generate short UUID
+    const account = new Account(
+      accountId,
+      accountData.owner,
+      accountData.balance || 0,
+      accountData.currency,
+      new Date().toISOString().split('T')[0]
+    );
+    this.accounts.set(accountId, account);
+    return account;
+  }
+
+  /**
+   * Update account
+   * @param {string} accountId
+   * @param {Object} updates
+   * @returns {Account|null}
+   */
+  updateAccount(accountId, updates) {
+    const account = this.accounts.get(accountId);
+    if (!account) {
+      return null;
+    }
+
+    if (updates.owner) {
+      account.owner = updates.owner;
+    }
+
+    return account;
+  }
+
+  /**
+   * Delete account
+   * @param {string} accountId
+   * @returns {boolean}
+   */
+  deleteAccount(accountId) {
+    return this.accounts.delete(accountId);
+  }
+
+  // ============ Transaction Operations ============
+
+  /**
+   * Get all transactions with optional filters
+   * @param {Object} filters - Optional filters (fromAccountId, toAccountId, createdAt)
+   * @returns {Array<Transaction>}
+   */
+  getTransactions(filters = {}) {
+    let transactions = Array.from(this.transactions.values());
+
+    if (filters.fromAccountId) {
+      transactions = transactions.filter(tx => tx.fromAccountId === filters.fromAccountId);
+    }
+
+    if (filters.toAccountId) {
+      transactions = transactions.filter(tx => tx.toAccountId === filters.toAccountId);
+    }
+
+    if (filters.createdAt) {
+      transactions = transactions.filter(tx => tx.createdAt === filters.createdAt);
+    }
+
+    return transactions;
+  }
+
+  /**
+   * Get transaction by ID
+   * @param {string} transactionId
+   * @returns {Transaction|null}
+   */
+  getTransactionById(transactionId) {
+    return this.transactions.get(transactionId) || null;
+  }
+
+  /**
+   * Create new transaction
+   * @param {Object} transactionData
+   * @returns {Transaction}
+   */
+  createTransaction(transactionData) {
+    const transactionId = uuidv4().split('-')[0]; // Generate short UUID
+    const transaction = new Transaction(
+      transactionId,
+      transactionData.fromAccountId,
+      transactionData.toAccountId,
+      transactionData.amount,
+      transactionData.currency,
+      new Date().toISOString().split('T')[0]
+    );
+    this.transactions.set(transactionId, transaction);
+    return transaction;
+  }
+
+  // ============ API Key Operations ============
+
+  /**
+   * Generate new API key
+   * @returns {string}
+   */
+  generateApiKey() {
+    const apiKey = uuidv4().replace(/-/g, '').substring(0, 16);
+    this.apiKeys.add(apiKey);
+    return apiKey;
+  }
+
+  /**
+   * Validate API key
+   * @param {string} apiKey
+   * @returns {boolean}
+   */
+  validateApiKey(apiKey) {
+    return this.apiKeys.has(apiKey);
+  }
+}
+
+// Export singleton instance
+module.exports = new Database();
+
