@@ -17,6 +17,11 @@ When you run `git commit`, the following checks run automatically:
 - Prevents commits if any tests fail
 - Displays code coverage report
 
+### 3. 📬 API Tests (Postman CLI) - Optional
+- Can be added to run Postman collections
+- See `POSTMAN_CLI_GUIDE.md` for setup instructions
+- Multiple integration options available
+
 ## How It Works
 
 ```bash
@@ -94,4 +99,37 @@ npm install  # Automatically installs hooks via 'prepare' script
 ```
 
 The hooks are now active for their local repository!
+
+## 📬 Adding Postman CLI Tests
+
+Want to add Postman API tests to your pre-commit hook? 
+
+1. **Read the guide**: See `POSTMAN_CLI_GUIDE.md` for detailed instructions
+2. **View examples**: Check `.husky/pre-commit-examples.sh` for 10 different patterns
+3. **Choose your approach**:
+   - Always run: Comprehensive but slower
+   - Conditional: Only run when API files change (recommended)
+   - Manual: Use `npm run test:api` separately
+
+### Quick Start - Add Postman CLI
+
+```bash
+# 1. Install Postman CLI (already in package.json)
+npm install
+
+# 2. Login to Postman
+postman login
+
+# 3. Edit .husky/pre-commit and add:
+echo "📬 Running Postman API tests..."
+postman collection run
+
+# Or run conditionally (only if API changed):
+if git diff --cached --name-only | grep -qE "src/routes|src/middleware"; then
+  echo "📬 Running Postman tests..."
+  postman collection run
+fi
+```
+
+See the full guide for more options!
 
