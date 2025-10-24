@@ -158,7 +158,7 @@ Tests use sample data that's reset before each test:
 - Check individual test files for examples
 - Run `npm test -- --help` for Jest options
 
----
+--- 
 
 **Keep tests green! 🟢**
 
