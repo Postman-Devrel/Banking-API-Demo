@@ -653,6 +653,10 @@
                   "",
                   "pm.test(`${testLocation} - Should return the correct response on account deletion`, function () {",
                   "    pm.expect(pm.response.json().success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
                   "});"
                 ],
                 "type": "text/javascript",
@@ -1325,17 +1329,17 @@
   ],
   "variable": [
     {
-      "id": "c91f8b17-9241-4e7a-8f68-76b2718be971",
+      "id": "f8755212-2017-4d80-9e3c-43444a2b5408",
       "key": "baseUrl",
       "value": "https://template.postman-echo.com"
     },
     {
-      "id": "9d1fcb6c-7816-4512-a298-8556bd957f95",
+      "id": "7760de65-d68d-4a7c-a14e-7c75d83c9d48",
       "key": "apiKey",
       "value": ""
     },
     {
-      "id": "bd9c4951-7127-4021-a290-bdea71cd039c",
+      "id": "a78ffc93-bd74-492d-bed3-3fa290481579",
       "key": "accountId",
       "value": ""
     }
