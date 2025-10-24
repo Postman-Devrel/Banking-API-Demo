@@ -79,7 +79,7 @@ app.use(errorHandler);
 
 // ============ Start Server ============
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log('╔════════════════════════════════════════════╗');
   console.log('║   🌌 Intergalactic Bank API Server 🌌    ║');
   console.log('╚════════════════════════════════════════════╝');

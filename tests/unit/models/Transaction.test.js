@@ -100,7 +100,7 @@ describe('Transaction Model', () => {
       const result = Transaction.validate(data);
       
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('amount');
+      expect(result.error).toContain('Amount');
     });
 
     test('should reject zero amount', () => {
@@ -155,7 +155,7 @@ describe('Transaction Model', () => {
       const result = Transaction.validate(data);
       
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('currency');
+      expect(result.error).toContain('Currency');
     });
   });
 

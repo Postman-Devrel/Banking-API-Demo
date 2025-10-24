@@ -29,11 +29,10 @@ jest.mock('../../src/middleware/auth', () => ({
   }
 }));
 
+const db = require('../../src/database/db');
+
 // Create fresh database for each test
-let db;
 beforeEach(() => {
-  jest.resetModules();
-  db = require('../../src/database/db');
   db.accounts.clear();
   db.transactions.clear();
   db.initializeSampleData();
