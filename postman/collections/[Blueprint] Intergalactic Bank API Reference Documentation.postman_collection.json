@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "3cd8bf75-167a-447f-bf9b-f7fbed536e0c",
-    "name": "[Blueprint] Intergalactic Bank API Reference Documentation Collection",
+    "name": "[Blueprint] Intergalactic Bank API Reference Documentation",
     "description": "The Intergalactic Bank API makes it easy to manage transaction and account data. Whether you’re running an ATM for Astronauts or simply interested in keeping tabs on your Cosmic Coins, Intergalactic Bank has you covered with the REST-based requests to make it happen.\n\nThis collection serves as a reference for all of the requests available in this API. For ideas on how to use these different requests to accomplish common banking tasks, we recommend checking out our workflows collection (also available as a Postman Collection Template).\n\n<img src=\"https://content.pstmn.io/55ace78a-b670-41c0-b1d4-1d19a78a4e10/T3BlbiBiYW5raW5nLnBuZw==\" alt=\"Welcome%20to%20the%20Intergalactic%20Bank%20✨\" width=\"297\" height=\"269\">\n\n## 🪐 **Getting Started**\n\nHere's a summary of what you need to know to get started with the Intergalactic Bank API:\n\n- You must use a valid API Key to send requests to the API endpoints. For this API, everyone will use the API Key `1234`. You can see this value pre-filled in the Collection Variables tab, and the Collection-level authorization tab.\n- Some endpoints are for Admin Users only. These are noted in the request's documentation.\n- The API has rate and usage limits.\n- The API returns request responses in JSON format. When an API request returns an error, it is sent in the JSON response as an error key.\n    \n\nFor more details, check out the additional sections below.\n\n## 🔐 Authentication\n\n- The Intergalactic Bank API uses an **API Key** for authentication.\n- You must include an API key in each request to the Postman API with the `x-api-key` request header.\n- The API key has been pre-filled as a [collection variable](https://learning.postman.com/docs/sending-requests/variables/). The authentication has been set up at the collection level, so all requests in this collection will automatically inherit the needed header.\n\n### Authentication error response\n\n- If an API key is missing, malformed, or invalid, you will receive an HTTP `401 Unauthorized` response code.\n- If you don't have permission to perform the operation, you will receive an HTTP `403 Forbidden` response.\n    \n\n## Rate and usage limits\n\nAPI access rate limits apply at a per-API key basis in unit time. The limit is 300 requests per minute. Also, depending on your plan, you may have usage limits. If you exceed either limit, your request will return an HTTP 429 Too Many Requests status code.\n\nEach API response returns the following set of headers to help you identify your use status:\n\n| Header | Description |\n| --- | --- |\n| `X-RateLimit-Limit` | The maximum number of requests that the consumer is permitted to make per minute. |\n| `X-RateLimit-Remaining` | The number of requests remaining in the current rate limit window. |\n| `X-RateLimit-Reset` | The time at which the current rate limit window resets in UTC epoch seconds. |\n\n## ✍️ Responses & Examples\n\nThough we always aim to return the data you seek, often, errors are inevitable. We have documented many of the possible responses you might encounter using [<b>Examples</b>](https://learning.postman.com/docs/sending-requests/examples/) under each request.\n\n\n### 🤔 **Need some help?**\n\nIn case you have questions, check out our tutorials:\n\n- [Video: Get and Set Variables](https://www.youtube.com/watch?v=EKv6n-jY9lU&list=PLM-7VG-sgbtC5tNXxd28cmePSa9BYwqeU&index=65)\n- [Request Authorization in Postman](https://learning.postman.com/docs/sending-requests/authorization/authorization/)\n- FAQ Page\n    \n\nAdditionally, you can check out our [community forum](https://community.postman.com) to review topics, ask questions, and learn from others.\n\n<img src=\"https://content.pstmn.io/c47a563b-e2c1-4fc9-baa0-67047bdd27a1/UG9zdG1hbmF1dC1zdXBwb3J0LnBuZw==\" alt=\"Here%20to%20help!\" width=\"178\" height=\"178\">",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "894115",
@@ -33,7 +33,9 @@
                   "",
                   "pm.test(`${testLocation} - Should return a string for the 'apiKey' property`, function () {",
                   "    pm.expect(response.apiKey, 'The property is not a string').to.be.a('string');",
-                  "});"
+                  "});",
+                  "",
+                  "pm.collectionVariables.set(\"apiKey\", response.apiKey);"
                 ],
                 "type": "text/javascript",
                 "packages": {},
@@ -363,6 +365,22 @@
         },
         {
           "name": "Create New Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "da529e18-8466-40d6-817a-e11c263d3e68",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.collectionVariables.set(\"accountId\", response.account.id);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
           "id": "02d18d1f-b6f0-41a9-ad41-7f1424848f81",
           "request": {
             "method": "POST",
@@ -629,6 +647,7 @@
             {
               "listen": "test",
               "script": {
+                "id": "95e627e3-5ed1-427d-90f5-3644324733c6",
                 "exec": [
                   "let testLocation = `${pm.execution.location[0]} | ${pm.execution.location.current}`;",
                   "",
@@ -638,20 +657,19 @@
                 ],
                 "type": "text/javascript",
                 "packages": {},
-                "requests": {},
-                "id": "95e627e3-5ed1-427d-90f5-3644324733c6"
+                "requests": {}
               }
             },
             {
               "listen": "prerequest",
               "script": {
+                "id": "24d5d210-571b-4904-bd93-ea349fca7bda",
                 "exec": [
                   ""
                 ],
                 "type": "text/javascript",
                 "packages": {},
-                "requests": {},
-                "id": "24d5d210-571b-4904-bd93-ea349fca7bda"
+                "requests": {}
               }
             }
           ],
@@ -1244,6 +1262,26 @@
       ],
       "id": "f28f2d5d-8da0-4a15-a279-174ce81c2d46",
       "description": "<img src=\"https://content.pstmn.io/2f912e6a-6eb0-410f-b74e-788c5bac6735/Q29pbi5wbmc=\" alt=\"Cosmic%20Coin\" width=\"112\" height=\"130\">\n\nA _**transaction**_ records money moving in or out of an account. Transactions at the Galactic Bank follow a blockchain-like approach. Once created, they cannot be updated or deleted.\n\nUse the **transaction** endpoints contained in this folder to...\n\n- <u>List transactions </u> \\- get all transactions from an account, with options to filter by date, or the account they were delivered to.\n    \n- <u>Get a single transaction</u> - If you are looking to retrieve information about a specific transaction, provide a `transactionId` and receive information about the transaction.\n    \n- <u>Create a new transaction</u> - create a new transfer or deposit transaction for a given account.\n    \n\nTransactions do not contain any information about the account balance. To inquire about account balances and other account-related details, please refer to the requests in the **Accounts** folder."
+    },
+    {
+      "name": "Demo Request",
+      "id": "d0a1918d-0d38-4df6-8930-5caa846a58f2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://postman-echo.com/get",
+          "protocol": "https",
+          "host": [
+            "postman-echo",
+            "com"
+          ],
+          "path": [
+            "get"
+          ]
+        }
+      },
+      "response": []
     }
   ],
   "auth": {
@@ -1287,9 +1325,19 @@
   ],
   "variable": [
     {
-      "id": "cc1bbe53-ed38-407f-8ff6-25c679799ab9",
+      "id": "c91f8b17-9241-4e7a-8f68-76b2718be971",
       "key": "baseUrl",
       "value": "https://template.postman-echo.com"
+    },
+    {
+      "id": "9d1fcb6c-7816-4512-a298-8556bd957f95",
+      "key": "apiKey",
+      "value": ""
+    },
+    {
+      "id": "bd9c4951-7127-4021-a290-bdea71cd039c",
+      "key": "accountId",
+      "value": ""
     }
   ]
 }

@@ -7,12 +7,15 @@ npx lint-staged
 echo "🧪 Running tests..."
 npm test
 
-# Run Postman tests only if API code changed
-if git diff --cached --name-only | grep -qE "src/routes|src/middleware"; then
-  echo "📬 API code changed - Running Postman tests..."
-  postman collection run
-else
-  echo "⏭️  No API changes detected, skipping Postman tests"
-fi
+# # Run Postman tests only if API code changed
+# if git diff --cached --name-only | grep -qE "src/routes|src/middleware"; then
+#   echo "📬 API code changed - Running Postman tests..."
+#   postman collection run
+# else
+#   echo "⏭️  No API changes detected, skipping Postman tests"
+# fi
+
+echo "📬 API code changed - Running Postman tests..."
+postman collection run "postman/collections/[Blueprint] Intergalactic Bank API Reference Documentation.postman_collection.json"
 
 echo "✅ All pre-commit checks passed!"
