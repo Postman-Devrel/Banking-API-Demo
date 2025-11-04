@@ -3,14 +3,14 @@
  * Centralized error handling for the application
  */
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   console.error('Error:', err);
 
   // Default error response
   const statusCode = err.statusCode || 500;
   const response = {
     error: {
-      name: err.name || 'serverError',
+      name: (err.name && err.name !== 'Error') ? err.name : 'serverError',
       message: err.message || 'An unexpected error occurred'
     }
   };

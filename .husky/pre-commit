@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running linter on staged files..."
+npx lint-staged
+
+echo "🧪 Running tests..."
+npm test
+
+# Run Spectral linting on Postman collections if they changed
+if git diff --cached --name-only | grep -qE "postman/collections/"; then
+  echo "📋 Linting Postman collections with Spectral..."
+  node .spectral/lint-with-names.js
+  
+  if [ $? -ne 0 ]; then
+    echo "❌ Spectral linting failed for Postman collections"
+    exit 1
+  fi
+  
+  echo "✅ Postman collection linting passed!"
+fi
+
+# Run Postman tests only if Postman collection files changed
+if git diff --cached --name-only | grep -qE "postman/"; then
+  echo "📬 Postman collection changed - Running Postman tests..."
+  
+  # Run all collections in postman/collections/
+  for collection in postman/collections/*.postman_collection.json; do
+    if [ -f "$collection" ]; then
+      echo "  → Running: $(basename "$collection")"
+      postman collection run "$collection"
+      
+      if [ $? -ne 0 ]; then
+        echo "❌ Postman collection failed: $collection"
+        exit 1
+      fi
+    fi
+  done
+  
+  echo "✅ All Postman collections passed!"
+else
+  echo "⏭️  No Postman collection changes detected, skipping Postman tests"
+fi
+
+echo "✅ All pre-commit checks passed!"

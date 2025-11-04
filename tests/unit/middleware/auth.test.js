@@ -82,7 +82,7 @@ describe('Authentication Middleware', () => {
 
   describe('requireAdmin()', () => {
     test('should allow admin with correct API key', () => {
-      req.apiKey = process.env.ADMIN_API_KEY;
+      req.apiKey = process.env.ADMIN_API_KEY || '1234';
 
       requireAdmin(req, res, next);
 

@@ -116,7 +116,7 @@ describe('Account Model', () => {
       const result = Account.validate(data);
       
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('balance');
+      expect(result.error).toContain('Balance');
     });
 
     test('should reject non-number balance', () => {

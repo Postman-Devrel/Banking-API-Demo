@@ -1,0 +1,177 @@
+extends: []
+
+rules:
+  # Collection Structure Rules
+  collection-name-required:
+    description: Collection must have a name
+    given: $.info
+    severity: error
+    then:
+      field: name
+      function: truthy
+      
+  collection-description-required:
+    description: Collection should have a description
+    given: $.info
+    severity: warn
+    then:
+      field: description
+      function: truthy
+      
+  # Request Rules - using recursive descent to find all items at any level
+  request-name-required:
+    description: All requests must have a name
+    given: $..item[*]
+    severity: error
+    then:
+      field: name
+      function: truthy
+      
+  request-description-recommended:
+    description: Request should have a description
+    message: 'Request "{{path}}" is missing a description. Add one to document the endpoint purpose.'
+    given: $..item[?(@.request)]
+    severity: warn
+    then:
+      field: request.description
+      function: truthy
+      
+  # URL Rules
+  request-url-required:
+    description: Request must have a URL
+    message: 'Request "{{path}}" is missing a URL'
+    given: $..item[?(@.request)]
+    severity: error
+    then:
+      field: request.url
+      function: truthy
+      
+  # Header Rules
+  request-headers-present:
+    description: Request should have appropriate headers
+    message: 'Request "{{path}}" is missing headers. Consider adding Content-Type, Accept, etc.'
+    given: $..item[?(@.request)]
+    severity: warn
+    then:
+      field: request.header
+      function: truthy
+      
+  # Test Rules
+  request-tests-recommended:
+    description: Request should include test scripts
+    message: 'Request "{{path}}" is missing test scripts. Add tests to validate responses.'
+    given: $..item[?(@.request)]
+    severity: warn
+    then:
+      field: event
+      function: truthy
+      
+  request-tests-have-scripts:
+    description: Test events should have executable scripts
+    message: 'Request "{{path}}" has test events but they may be empty'
+    given: $..item[?(@.request)].event[?(@.listen == 'test')]
+    severity: info
+    then:
+      field: script.exec
+      function: truthy
+      
+  # Authentication Rules
+  auth-configured:
+    description: Collection should have authentication configured
+    given: $.auth
+    severity: info
+    then:
+      function: truthy
+      
+  # Security Rules - No Hardcoded Credentials
+  no-hardcoded-auth-header:
+    description: Authorization headers must use variables, not plain text
+    message: 'Request "{{path}}" has a hardcoded Authorization header. Use {{variable}} syntax instead.'
+    given: $..header[?(@.key == 'Authorization' || @.key == 'authorization')]
+    severity: error
+    then:
+      field: value
+      function: pattern
+      functionOptions:
+        match: "^\\{\\{.*\\}\\}$"
+        
+  no-hardcoded-apikey-header:
+    description: API key headers must use variables, not plain text
+    message: 'Request "{{path}}" has a hardcoded API key in headers. Use {{variable}} syntax instead.'
+    given: $..header[?(@.key == 'x-api-key' || @.key == 'X-API-Key' || @.key == 'api-key' || @.key == 'apikey')]
+    severity: error
+    then:
+      field: value
+      function: pattern
+      functionOptions:
+        match: "^\\{\\{.*\\}\\}$"
+        
+  no-hardcoded-bearer-token:
+    description: Bearer tokens must use variables, not plain text
+    message: 'Request "{{path}}" has a hardcoded Bearer token. Use {{variable}} syntax instead.'
+    given: $..header[?(@.key == 'Authorization' || @.key == 'authorization')]
+    severity: error
+    then:
+      field: value
+      function: pattern
+      functionOptions:
+        notMatch: "^Bearer\\s+[A-Za-z0-9\\-._~+/]+=*$"
+        
+  no-credentials-in-auth-apikey:
+    description: API key auth values must use variables
+    message: '🔒 SECURITY: Authentication contains hardcoded API key. Use {{variable}} syntax instead.'
+    given: $..auth.apikey[0].value
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^\\{\\{.*\\}\\}$"
+        
+  no-credentials-in-auth-bearer:
+    description: Bearer token auth must use variables
+    message: '🔒 SECURITY: Authentication contains hardcoded bearer token. Use {{variable}} syntax instead.'
+    given: $..auth.bearer[0].value
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^\\{\\{.*\\}\\}$"
+        
+  no-credentials-in-auth-basic-username:
+    description: Basic auth username must use variables
+    message: '🔒 SECURITY: Authentication contains hardcoded username. Use {{variable}} syntax instead.'
+    given: $..auth.basic[0].value
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^\\{\\{.*\\}\\}$"
+        
+  no-credentials-in-auth-basic-password:
+    description: Basic auth password must use variables
+    message: '🔒 SECURITY: Authentication contains hardcoded password. Use {{variable}} syntax instead.'
+    given: $..auth.basic[1].value
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^\\{\\{.*\\}\\}$"
+      
+  # Variable Rules
+  variables-defined:
+    description: Collection should define variables for reusability
+    given: $.variable
+    severity: info
+    then:
+      function: truthy
+      
+  # Response Examples
+  response-examples-recommended:
+    description: Request should include response examples
+    message: 'Request at {{path}} should include response examples for better documentation'
+    given: $..item[?(@.request)]
+    severity: info
+    then:
+      field: response
+      function: truthy
+

@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: Intergalactic Bank API
   version: 1.0.0
@@ -52,7 +52,7 @@ paths:
         - Admin
       summary: Generate API key
       description: |
-        Generates a new API key for accessing the Intergalactic Bank API.
+        Generates a new API key for accessing the Intergalactic Bank APIsss.
         This endpoint does not require authentication.
       operationId: generateApiKey
       security: []
@@ -210,140 +210,6 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimitExceeded'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /api/v1/accounts/{accountId}:
-    get:
-      tags:
-        - Accounts
-      summary: Get account by ID
-      description: Retrieves detailed information about a specific account by its ID.
-      operationId: getAccount
-      parameters:
-        - $ref: '#/components/parameters/AccountId'
-      responses:
-        '200':
-          description: Account details retrieved successfully
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/X-RateLimit-Limit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/X-RateLimit-Remaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/X-RateLimit-Reset'
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - account
-                properties:
-                  account:
-                    $ref: '#/components/schemas/Account'
-              example:
-                account:
-                  accountId: "1"
-                  owner: "Nova Newman"
-                  createdAt: "2024-01-10"
-                  balance: 10000
-                  currency: "COSMIC_COINS"
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/AccountNotFound'
-        '429':
-          $ref: '#/components/responses/RateLimitExceeded'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    
-    patch:
-      tags:
-        - Accounts
-      summary: Update account
-      description: |
-        Updates account information. This operation requires admin privileges.
-        Only the owner field can be updated. The account balance and currency cannot be changed directly.
-      operationId: updateAccount
-      security:
-        - ApiKeyAuth: [admin]
-      parameters:
-        - $ref: '#/components/parameters/AccountId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateAccountRequest'
-            example:
-              owner: "Nova Newman"
-      responses:
-        '200':
-          description: Account updated successfully
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/X-RateLimit-Limit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/X-RateLimit-Remaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/X-RateLimit-Reset'
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - account
-                properties:
-                  account:
-                    $ref: '#/components/schemas/Account'
-              example:
-                account:
-                  accountId: "2"
-                  owner: "Nova Newman"
-                  balance: 300
-                  currency: "COSMIC_COINS"
-                  createdAt: "2023-04-10"
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/AccountNotFound'
-        '429':
-          $ref: '#/components/responses/RateLimitExceeded'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    
-    delete:
-      tags:
-        - Accounts
-      summary: Delete account
-      description: |
-        Deletes an account. This operation requires admin privileges.
-        **Warning**: Once an account is deleted, it cannot be restored. Use with caution.
-      operationId: deleteAccount
-      security:
-        - ApiKeyAuth: [admin]
-      parameters:
-        - $ref: '#/components/parameters/AccountId'
-      responses:
-        '204':
-          description: Account deleted successfully
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/X-RateLimit-Limit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/X-RateLimit-Remaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/X-RateLimit-Reset'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/AccountNotFound'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '500':

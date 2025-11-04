@@ -14,14 +14,15 @@ jest.mock('../../src/middleware/auth', () => ({
   }
 }));
 
+const db = require('../../src/database/db');
+
 // Create fresh database for each test
-let db;
 beforeEach(() => {
-  jest.resetModules();
-  db = require('../../src/database/db');
   // Clear and reinitialize
   db.accounts.clear();
   db.transactions.clear();
+  db.apiKeys.clear();
+  db.apiKeys.add('1234'); // Re-add default API key
   db.initializeSampleData();
 });
 
