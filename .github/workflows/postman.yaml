@@ -22,10 +22,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '>= 20.19.0'
-          cache: 'npm'
+          cache: 'yarn'
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
@@ -39,14 +39,14 @@ jobs:
         run: postman login --with-api-key "$POSTMAN_API_KEY"
 
       - name: Run unit and integration tests
-        run: npm test
+        run: yarn test
 
       - name: Run Spectral linting on collections
-        run: npm run lint:collections
+        run: yarn lint:collections
 
       - name: Start API server
         run: |
-          npm start &
+          yarn start &
           echo $! > server.pid
 
       - name: Wait for API readiness
@@ -64,7 +64,7 @@ jobs:
           exit 1
 
       - name: Run Postman collection tests
-        run: npm run test:api
+        run: yarn test:api
 
       - name: Stop API server
         if: always()
