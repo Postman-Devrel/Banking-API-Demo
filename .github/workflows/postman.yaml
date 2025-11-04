@@ -1,0 +1,117 @@
+name: Publish to Postman Workspace
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  quality-checks:
+    name: Validate API and Collections
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Postman CLI
+        run: curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
+
+      - name: Verify Postman CLI version
+        run: postman --version
+
+      - name: Login to Postman
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+        run: postman login --with-api-key "$POSTMAN_API_KEY"
+
+      - name: Run unit and integration tests
+        run: npm test
+
+      - name: Run Spectral linting on collections
+        run: npm run lint:collections
+
+      - name: Start API server
+        run: |
+          npm start &
+          echo $! > server.pid
+
+      - name: Wait for API readiness
+        run: |
+          for attempt in {1..30}; do
+            if curl -sSf http://localhost:3000/health >/dev/null; then
+              exit 0
+            fi
+            if curl -sSf http://localhost:3000 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become ready in time." >&2
+          exit 1
+
+      - name: Run Postman collection tests
+        run: npm run test:api
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+          fi
+
+  postman-publish:
+    name: Push to Postman Workspace
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Postman CLI
+        run: curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
+
+      - name: Verify Postman CLI version
+        run: postman --version
+
+      - name: Login to Postman
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+        run: postman login --with-api-key "$POSTMAN_API_KEY"
+
+      - name: Show workspace configuration
+        run: |
+          echo "🧩 Workspace Configuration:"
+          cat .postman/config.json
+          echo ""
+          echo "📁 Collections to sync:"
+          ls -la postman/collections/
+          echo ""
+          echo "🌍 Environments to sync:"
+          ls -la postman/environments/
+
+      - name: Push workspace to Postman
+        run: postman workspace push -y
+
+      - name: Confirm sync success
+        run: |
+          echo "✅ Workspace successfully synced!"
+          echo "🌐 View your workspace at: https://web.postman.co/workspace/a6c44822-f001-4728-b0d4-5a1917289054"
