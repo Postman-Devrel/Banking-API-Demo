@@ -74,30 +74,8 @@ jobs:
             rm server.pid
           fi
 
-  postman-publish:
-    name: Push to Postman Workspace
-    runs-on: ubuntu-latest
-    needs: quality-checks
-    if: github.event_name != 'pull_request'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Postman CLI
-        run: curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
-
-      - name: Verify Postman CLI version
-        run: postman --version
-
-      - name: Login to Postman
-        env:
-          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
-        run: postman login --with-api-key "$POSTMAN_API_KEY"
-
       - name: Show workspace configuration
+        if: github.event_name != 'pull_request'
         run: |
           echo "🧩 Workspace Configuration:"
           cat .postman/config.json
@@ -109,9 +87,11 @@ jobs:
           ls -la postman/environments/
 
       - name: Push workspace to Postman
+        if: github.event_name != 'pull_request'
         run: postman workspace push -y
 
       - name: Confirm sync success
+        if: github.event_name != 'pull_request'
         run: |
           echo "✅ Workspace successfully synced!"
           echo "🌐 View your workspace at: https://web.postman.co/workspace/a6c44822-f001-4728-b0d4-5a1917289054"
