@@ -1,0 +1,12 @@
+{
+  "workspace": {
+    "id": "dc52c5c3-a708-487e-891e-3f0d62737b8c"
+  },
+  "entities": {
+6│    "collections": ["../postman/collections/Intergalactic Bank API.postman_collection.json"],
+    "environments": [],
+    "specs": [],
+    "flows": [],
+    "globals": []
+  }
+}
