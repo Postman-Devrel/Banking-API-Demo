@@ -21,6 +21,8 @@ beforeEach(() => {
   // Clear and reinitialize
   db.accounts.clear();
   db.transactions.clear();
+  db.apiKeys.clear();
+  db.apiKeys.add('1234'); // Re-add default API key
   db.initializeSampleData();
 });
 

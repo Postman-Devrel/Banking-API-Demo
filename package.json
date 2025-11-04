@@ -10,9 +10,10 @@
     "test:watch": "jest --watch",
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration",
-    "test:api": "postman collection run",
+    "test:api": "for file in postman/collections/*.postman_collection.json; do echo \"Running $file...\"; postman collection run \"$file\"; done",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:collections": "node .spectral/lint-with-names.js",
     "prepare": "husky install"
   },
   "keywords": [
@@ -38,11 +39,15 @@
     "eslint-plugin-node": "^11.1.0",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
-    "postman-cli": "^1.3.0"
+    "postman-cli": "^1.3.0",
+    "@stoplight/spectral-cli": "^6.11.0"
   },
   "lint-staged": {
     "*.js": [
       "eslint --fix"
+    ],
+    "postman/collections/*.postman_collection.json": [
+      "spectral lint"
     ]
   }
 }

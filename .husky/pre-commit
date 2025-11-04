@@ -7,6 +7,19 @@ npx lint-staged
 echo "🧪 Running tests..."
 npm test
 
+# Run Spectral linting on Postman collections if they changed
+if git diff --cached --name-only | grep -qE "postman/collections/"; then
+  echo "📋 Linting Postman collections with Spectral..."
+  node .spectral/lint-with-names.js
+  
+  if [ $? -ne 0 ]; then
+    echo "❌ Spectral linting failed for Postman collections"
+    exit 1
+  fi
+  
+  echo "✅ Postman collection linting passed!"
+fi
+
 # Run Postman tests only if Postman collection files changed
 if git diff --cached --name-only | grep -qE "postman/"; then
   echo "📬 Postman collection changed - Running Postman tests..."

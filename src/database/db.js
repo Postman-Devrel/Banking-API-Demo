@@ -10,10 +10,12 @@ const Transaction = require('../models/Transaction');
 
 class Database {
   constructor() {
+    console.log('🔄 Initializing Database...');
     this.accounts = new Map();
     this.transactions = new Map();
     this.apiKeys = new Set(['1234']); // Default API key
     this.initializeSampleData();
+    console.log(`✅ Database initialized - Accounts: ${this.accounts.size}, API Keys: ${this.apiKeys.size}`);
   }
 
   /**
@@ -79,6 +81,7 @@ class Database {
       new Date().toISOString().split('T')[0]
     );
     this.accounts.set(accountId, account);
+    console.log(`✓ Account created: ${accountId} - Total accounts: ${this.accounts.size}`);
     return account;
   }
 
@@ -172,6 +175,7 @@ class Database {
   generateApiKey() {
     const apiKey = uuidv4().replace(/-/g, '').substring(0, 16);
     this.apiKeys.add(apiKey);
+    console.log(`✓ API Key generated: ${apiKey} - Total keys: ${this.apiKeys.size}`);
     return apiKey;
   }
 
