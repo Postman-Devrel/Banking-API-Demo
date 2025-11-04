@@ -59,9 +59,11 @@
               ]
             },
             "description": "Generates a new API key for accessing the Intergalactic Bank API."
-          }
+          },
+          "id": "7d5946e4-2281-4a5c-a565-93403413331c"
         }
-      ]
+      ],
+      "id": "baddf86c-67f2-4d58-828a-b2879dc04f2f"
     },
     {
       "name": "Accounts",
@@ -126,7 +128,8 @@
               ]
             },
             "description": "Retrieves a list of all accounts at the Intergalactic Bank."
-          }
+          },
+          "id": "a3cdc856-74ef-40f8-81e8-6f820f69ed7e"
         },
         {
           "name": "Create new account",
@@ -156,7 +159,8 @@
               ]
             },
             "description": "Creates a new account at the Intergalactic Bank."
-          }
+          },
+          "id": "d5e62f0c-3201-4da2-9dda-a22a3dd51eb2"
         },
         {
           "name": "List all accounts Copy",
@@ -184,9 +188,11 @@
               ]
             },
             "description": "Retrieves a list of all accounts at the Intergalactic Bank."
-          }
+          },
+          "id": "029bb0ee-d361-476d-86e0-6cb0da4219f4"
         }
-      ]
+      ],
+      "id": "5270871e-4eeb-49d6-86ac-24e4ebf4f69f"
     },
     {
       "name": "Transactions",
@@ -209,7 +215,8 @@
               ]
             },
             "description": "Retrieves a list of transactions."
-          }
+          },
+          "id": "441d24d5-ecca-4453-bfde-c684df26c5e8"
         },
         {
           "name": "Create new transaction",
@@ -239,9 +246,11 @@
               ]
             },
             "description": "Creates a new transaction."
-          }
+          },
+          "id": "48bb6ea4-1f3f-4dde-b346-2caed7e5a22d"
         }
-      ]
+      ],
+      "id": "2cc17a8a-651f-4317-b4ba-4efc34bc38da"
     }
   ],
   "auth": {
