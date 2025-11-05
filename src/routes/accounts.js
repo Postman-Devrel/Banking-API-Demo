@@ -40,33 +40,33 @@ router.get('/', validateApiKey, (req, res) => {
  * GET /api/v1/accounts/:accountId
  * Get a specific account by ID
  */
-// router.get('/:accountId', validateApiKey, (req, res) => {
-//   try {
-//     const { accountId } = req.params;
+router.get('/:accountId', validateApiKey, (req, res) => {
+  try {
+    const { accountId } = req.params;
     
-//     const account = db.getAccountById(accountId);
+    const account = db.getAccountById(accountId);
     
-//     if (!account) {
-//       return res.status(404).json({
-//         error: {
-//           name: 'instanceNotFoundError',
-//           message: 'The specified account does not exist.'
-//         }
-//       });
-//     }
+    if (!account) {
+      return res.status(404).json({
+        error: {
+          name: 'instanceNotFoundError',
+          message: 'The specified account does not exist.'
+        }
+      });
+    }
 
-//     res.status(200).json({
-//       account: account.toJSON()
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       error: {
-//         name: 'serverError',
-//         message: 'Failed to retrieve account'
-//       }
-//     });
-//   }
-// });
+    res.status(200).json({
+      account: account.toJSON()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        name: 'serverError',
+        message: 'Failed to retrieve account'
+      }
+    });
+  }
+});
 
 /**
  * POST /api/v1/accounts
