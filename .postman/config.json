@@ -1,0 +1,12 @@
+{
+  "workspace": {
+    "id": "c9864502-aa44-4ebf-bebd-cc1186e4c94b"
+  },
+  "entities": {
+    "collections": ["../postman/collections/Banking-API-Demo.postman_collection.json"],
+    "environments": [],
+    "specs": [],
+    "flows": [],
+    "globals": []
+  }
+}
