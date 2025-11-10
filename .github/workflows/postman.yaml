@@ -87,7 +87,6 @@ jobs:
           ls -la postman/environments/
 
       - name: Push workspace to Postman
-        if: github.event_name != 'pull_request'
         run: postman workspace push -y
 
       - name: Confirm sync success
