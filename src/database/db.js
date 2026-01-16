@@ -22,11 +22,11 @@ class Database {
    * Initialize with sample data for testing
    */
   initializeSampleData() {
-    // Create sample accounts
-    const account1 = new Account('1', 'Nova Newman', 10000, 'COSMIC_COINS', '2023-04-10');
-    const account2 = new Account('2', 'Gary Galaxy', 237, 'COSMIC_COINS', '2023-04-10');
-    const account3 = new Account('3', 'Luna Starlight', 5000, 'GALAXY_GOLD', '2024-01-10');
-    
+    // Create sample accounts (owned by default API key '1234')
+    const account1 = new Account('1', 'Nova Newman', 10000, 'COSMIC_COINS', '2023-04-10', 'STANDARD', '1234', false);
+    const account2 = new Account('2', 'Gary Galaxy', 237, 'COSMIC_COINS', '2023-04-10', 'PREMIUM', '1234', false);
+    const account3 = new Account('3', 'Luna Starlight', 5000, 'GALAXY_GOLD', '2024-01-10', 'BUSINESS', '1234', false);
+
     this.accounts.set('1', account1);
     this.accounts.set('2', account2);
     this.accounts.set('3', account3);
@@ -40,11 +40,19 @@ class Database {
 
   /**
    * Get all accounts with optional filters
-   * @param {Object} filters - Optional filters (owner, createdAt)
+   * @param {Object} filters - Optional filters (owner, createdAt, apiKey)
    * @returns {Array<Account>}
    */
   getAccounts(filters = {}) {
     let accounts = Array.from(this.accounts.values());
+
+    // Exclude deleted accounts
+    accounts = accounts.filter(acc => !acc.deleted);
+
+    // Filter by API key for ownership
+    if (filters.apiKey) {
+      accounts = accounts.filter(acc => acc.apiKey === filters.apiKey);
+    }
 
     if (filters.owner) {
       accounts = accounts.filter(acc => acc.owner.toLowerCase().includes(filters.owner.toLowerCase()));
@@ -69,16 +77,20 @@ class Database {
   /**
    * Create new account
    * @param {Object} accountData
+   * @param {string} apiKey - API key of the creator
    * @returns {Account}
    */
-  createAccount(accountData) {
+  createAccount(accountData, apiKey) {
     const accountId = uuidv4().split('-')[0]; // Generate short UUID
     const account = new Account(
       accountId,
       accountData.owner,
       accountData.balance || 0,
       accountData.currency,
-      new Date().toISOString().split('T')[0]
+      new Date().toISOString().split('T')[0],
+      accountData.accountType || 'STANDARD',
+      apiKey,
+      false
     );
     this.accounts.set(accountId, account);
     console.log(`✓ Account created: ${accountId} - Total accounts: ${this.accounts.size}`);
@@ -93,7 +105,7 @@ class Database {
    */
   updateAccount(accountId, updates) {
     const account = this.accounts.get(accountId);
-    if (!account) {
+    if (!account || account.deleted) {
       return null;
     }
 
@@ -101,16 +113,26 @@ class Database {
       account.owner = updates.owner;
     }
 
+    if (updates.accountType) {
+      account.accountType = updates.accountType;
+    }
+
     return account;
   }
 
   /**
-   * Delete account
+   * Delete account (soft delete)
    * @param {string} accountId
    * @returns {boolean}
    */
   deleteAccount(accountId) {
-    return this.accounts.delete(accountId);
+    const account = this.accounts.get(accountId);
+    if (!account || account.deleted) {
+      return false;
+    }
+    account.deleted = true;
+    console.log(`✓ Account soft deleted: ${accountId}`);
+    return true;
   }
 
   // ============ Transaction Operations ============

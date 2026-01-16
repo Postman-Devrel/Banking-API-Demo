@@ -4,12 +4,15 @@
  */
 
 class Account {
-  constructor(accountId, owner, balance = 0, currency, createdAt = new Date().toISOString().split('T')[0]) {
+  constructor(accountId, owner, balance = 0, currency, createdAt = new Date().toISOString().split('T')[0], accountType = 'STANDARD', apiKey = null, deleted = false) {
     this.accountId = accountId;
     this.owner = owner;
     this.balance = balance;
     this.currency = currency;
     this.createdAt = createdAt;
+    this.accountType = accountType;
+    this.apiKey = apiKey;
+    this.deleted = deleted;
   }
 
   /**
@@ -19,7 +22,8 @@ class Account {
    */
   static validate(data) {
     const validCurrencies = ['COSMIC_COINS', 'GALAXY_GOLD', 'MOON_BUCKS'];
-    
+    const validAccountTypes = ['STANDARD', 'PREMIUM', 'BUSINESS'];
+
     if (!data.owner || typeof data.owner !== 'string') {
       return { isValid: false, error: 'Owner name is required and must be a string' };
     }
@@ -30,6 +34,10 @@ class Account {
 
     if (data.balance !== undefined && (typeof data.balance !== 'number' || data.balance < 0)) {
       return { isValid: false, error: 'Balance must be a non-negative number' };
+    }
+
+    if (data.accountType && !validAccountTypes.includes(data.accountType)) {
+      return { isValid: false, error: `Account type must be one of: ${validAccountTypes.join(', ')}` };
     }
 
     return { isValid: true };
@@ -60,6 +68,7 @@ class Account {
     return {
       accountId: this.accountId,
       owner: this.owner,
+      accountType: this.accountType,
       createdAt: this.createdAt,
       balance: this.balance,
       currency: this.currency
