@@ -9,6 +9,7 @@ const db = require('../database/db');
  * Middleware to validate API key
  */
 const validateApiKey = (req, res, next) => {
+
   const apiKey = req.headers['x-api-key'] || req.headers['api-key'];
 
   if (!apiKey) {
@@ -20,13 +21,9 @@ const validateApiKey = (req, res, next) => {
     });
   }
 
+  // If API key doesn't exist, automatically register it
   if (!db.validateApiKey(apiKey)) {
-    return res.status(401).json({
-      error: {
-        name: 'authenticationError',
-        message: 'Invalid API key. Please provide a valid API key.'
-      }
-    });
+    db.addApiKey(apiKey);
   }
 
   // Store API key in request for potential admin check

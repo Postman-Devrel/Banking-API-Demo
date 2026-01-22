@@ -113,6 +113,10 @@ class Database {
       account.owner = updates.owner;
     }
 
+    if (updates.currency) {
+      account.currency = updates.currency;
+    }
+
     if (updates.accountType) {
       account.accountType = updates.accountType;
     }
@@ -170,6 +174,18 @@ class Database {
   }
 
   /**
+   * Check if account has any transactions
+   * @param {string} accountId
+   * @returns {boolean}
+   */
+  accountHasTransactions(accountId) {
+    const transactions = Array.from(this.transactions.values());
+    return transactions.some(tx =>
+      tx.fromAccountId === accountId || tx.toAccountId === accountId
+    );
+  }
+
+  /**
    * Create new transaction
    * @param {Object} transactionData
    * @returns {Transaction}
@@ -199,6 +215,15 @@ class Database {
     this.apiKeys.add(apiKey);
     console.log(`✓ API Key generated: ${apiKey} - Total keys: ${this.apiKeys.size}`);
     return apiKey;
+  }
+
+  /**
+   * Add an API key to the database
+   * @param {string} apiKey
+   */
+  addApiKey(apiKey) {
+    this.apiKeys.add(apiKey);
+    console.log(`✓ API Key registered: ${apiKey} - Total keys: ${this.apiKeys.size}`);
   }
 
   /**

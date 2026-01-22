@@ -38,48 +38,6 @@ router.get('/', validateApiKey, (req, res) => {
 });
 
 /**
- * GET /api/v1/accounts/:id
- * Get a single account by ID
- */
-router.get('/:id', validateApiKey, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const account = db.getAccountById(id);
-
-    if (!account || account.deleted) {
-      return res.status(404).json({
-        error: {
-          name: 'notFoundError',
-          message: 'Account not found'
-        }
-      });
-    }
-
-    // Check ownership
-    if (account.apiKey !== req.apiKey) {
-      return res.status(403).json({
-        error: {
-          name: 'forbiddenError',
-          message: 'You do not have permission to access this account'
-        }
-      });
-    }
-
-    res.status(200).json({
-      account: account.toJSON()
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: {
-        name: 'serverError',
-        message: 'Failed to retrieve account'
-      }
-    });
-  }
-});
-
-/**
  * POST /api/v1/accounts
  * Create a new account
  */
@@ -117,74 +75,115 @@ router.post('/', validateApiKey, (req, res) => {
 });
 
 /**
+ * GET /api/v1/accounts/:id
+ * Get a single account by ID
+ */
+router.get('/:id', validateApiKey, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get account from database
+    const account = db.getAccountById(id);
+
+    // Check if account exists
+    if (!account || account.deleted) {
+      return res.status(404).json({
+        error: {
+          name: 'notFound',
+          message: 'Account not found'
+        }
+      });
+    }
+
+    // Check ownership - users can only access their own accounts
+    if (account.apiKey !== req.apiKey) {
+      return res.status(403).json({
+        error: {
+          name: 'forbidden',
+          message: 'Access denied. You can only access your own accounts.'
+        }
+      });
+    }
+
+    res.status(200).json({
+      account: account.toJSON()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        name: 'serverError',
+        message: 'Failed to retrieve account'
+      }
+    });
+  }
+});
+
+/**
  * PUT /api/v1/accounts/:id
- * Update an existing account (owner name and account type only)
+ * Update an existing account
  */
 router.put('/:id', validateApiKey, (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
+    // Get account from database
     const account = db.getAccountById(id);
 
+    // Check if account exists
     if (!account || account.deleted) {
       return res.status(404).json({
         error: {
-          name: 'notFoundError',
+          name: 'notFound',
           message: 'Account not found'
         }
       });
     }
 
-    // Check ownership
+    // Check ownership - users can only update their own accounts
     if (account.apiKey !== req.apiKey) {
       return res.status(403).json({
         error: {
-          name: 'forbiddenError',
-          message: 'You do not have permission to update this account'
+          name: 'forbidden',
+          message: 'Access denied. You can only update your own accounts.'
         }
       });
     }
 
-    // Only allow updating owner and accountType
-    const allowedUpdates = {};
-    if (updates.owner !== undefined) allowedUpdates.owner = updates.owner;
-    if (updates.accountType !== undefined) allowedUpdates.accountType = updates.accountType;
-
-    // Validate updates
-    if (Object.keys(allowedUpdates).length === 0) {
+    // Prevent balance updates (balance only changes via transactions)
+    if (updates.balance !== undefined) {
       return res.status(400).json({
         error: {
           name: 'validationError',
-          message: 'No valid fields to update. Only owner and accountType can be updated.'
+          message: 'Balance cannot be updated directly. Use transaction endpoints to modify balance.'
         }
       });
     }
 
-    // Validate account type if provided
-    if (allowedUpdates.accountType) {
-      const validation = Account.validate({ ...account, accountType: allowedUpdates.accountType });
-      if (!validation.isValid) {
-        return res.status(400).json({
-          error: {
-            name: 'validationError',
-            message: validation.error
-          }
-        });
-      }
-    }
-
-    // Validate owner if provided
-    if (allowedUpdates.owner !== undefined && (typeof allowedUpdates.owner !== 'string' || allowedUpdates.owner.trim() === '')) {
+    // Prevent updates to immutable fields
+    if (updates.accountId || updates.createdAt || updates.apiKey || updates.deleted !== undefined) {
       return res.status(400).json({
         error: {
           name: 'validationError',
-          message: 'Owner name must be a non-empty string'
+          message: 'Cannot update accountId, createdAt, apiKey, or deleted fields.'
         }
       });
     }
 
-    const updatedAccount = db.updateAccount(id, allowedUpdates);
+    // Validate updatable fields
+    const validationData = { ...account, ...updates };
+    const validation = Account.validate(validationData);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        error: {
+          name: 'validationError',
+          message: validation.error
+        }
+      });
+    }
+
+    // Update account
+    const updatedAccount = db.updateAccount(id, updates);
 
     res.status(200).json({
       account: updatedAccount.toJSON()
@@ -207,31 +206,48 @@ router.delete('/:id', validateApiKey, (req, res) => {
   try {
     const { id } = req.params;
 
+    // Get account from database
     const account = db.getAccountById(id);
 
+    // Check if account exists
     if (!account || account.deleted) {
       return res.status(404).json({
         error: {
-          name: 'notFoundError',
+          name: 'notFound',
           message: 'Account not found'
         }
       });
     }
 
-    // Check ownership
+    // Check ownership - users can only delete their own accounts
     if (account.apiKey !== req.apiKey) {
       return res.status(403).json({
         error: {
-          name: 'forbiddenError',
-          message: 'You do not have permission to delete this account'
+          name: 'forbidden',
+          message: 'Access denied. You can only delete your own accounts.'
         }
       });
     }
 
-    db.deleteAccount(id);
+    // Check if account has transactions
+    const hasTransactions = db.accountHasTransactions(id);
+
+    // Always perform soft delete
+    const deleted = db.deleteAccount(id);
+
+    if (!deleted) {
+      return res.status(500).json({
+        error: {
+          name: 'serverError',
+          message: 'Failed to delete account'
+        }
+      });
+    }
 
     res.status(200).json({
-      message: 'Account deleted successfully'
+      message: 'Account deleted successfully',
+      accountId: id,
+      deletionType: hasTransactions ? 'soft (has transactions)' : 'soft'
     });
   } catch (error) {
     res.status(500).json({

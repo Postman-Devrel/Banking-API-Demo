@@ -1,0 +1,271 @@
+{
+  "info": {
+    "_postman_id": "07abec89-2a86-43d1-a72b-66378bc287c9",
+    "name": "Intergalactic Bank API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Generate API key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Parse the JSON response",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "// Test to verify the API key was received successfully",
+                  "pm.test('API key was received successfully', function() {",
+                  "    pm.expect(jsonData).to.have.property('apiKey');",
+                  "    pm.expect(jsonData.apiKey).to.be.a('string');",
+                  "    pm.expect(jsonData.apiKey).to.not.be.empty;",
+                  "});",
+                  "",
+                  "// Extract the apiKey and save it to the environment variable",
+                  "if (jsonData.apiKey) {",
+                  "    pm.environment.set('apiKey', jsonData.apiKey);",
+                  "    console.log('API key saved to environment variable: apiKey');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "id": "c2f6cbd4-0994-453c-8a16-f8b2adb8f602",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/auth",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "api",
+                "v1",
+                "auth"
+              ]
+            },
+            "description": "Generates a new API key for accessing the Intergalactic Bank API."
+          },
+          "response": []
+        }
+      ],
+      "id": "15ae2bb5-f340-4f5f-b4fa-e0a89b00321e"
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "List all accounts",
+          "id": "28a73044-ccbd-4cd4-842e-a5c845286f3a",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts?owner={{owner}}&createdAt={{createdAt}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ],
+              "query": [
+                {
+                  "key": "owner",
+                  "value": "{{owner}}"
+                },
+                {
+                  "key": "createdAt",
+                  "value": "{{createdAt}}"
+                }
+              ]
+            },
+            "description": "Retrieves a list of all accounts. Optionally filter by owner name or creation date."
+          },
+          "response": []
+        },
+        {
+          "name": "Create new account",
+          "id": "202b8fe4-8b75-48b5-80aa-672943b268ef",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"owner\": \"Nova Newman\",\n  \"balance\": 500,\n  \"currency\": \"COSMIC_COINS\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            },
+            "description": "Creates a new account at the Intergalactic Bank."
+          },
+          "response": []
+        }
+      ],
+      "id": "29c1b44d-47aa-42a4-8d24-295e17b0c936"
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "List all transactions",
+          "id": "4d4c27d0-9e06-4eaa-81fd-7f6d8a6cbb00",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/transactions?fromAccountId={{fromAccountId}}&toAccountId={{toAccountId}}&createdAt={{createdAt}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "fromAccountId",
+                  "value": "{{fromAccountId}}"
+                },
+                {
+                  "key": "toAccountId",
+                  "value": "{{toAccountId}}"
+                },
+                {
+                  "key": "createdAt",
+                  "value": "{{createdAt}}"
+                }
+              ]
+            },
+            "description": "Retrieves a list of transactions. Optionally filter by source account, destination account, or creation date."
+          },
+          "response": []
+        },
+        {
+          "name": "Create new transaction",
+          "id": "35ef0a18-0345-43df-a493-07598eddd449",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"12345678\",\n  \"toAccountId\": \"87654321\",\n  \"amount\": 10000,\n  \"currency\": \"COSMIC_COINS\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/transactions",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ]
+            },
+            "description": "Creates a new transaction. Transfer or deposit funds."
+          },
+          "response": []
+        },
+        {
+          "name": "Get transaction by ID",
+          "id": "b48b2fb3-6412-4ed7-b173-c349fe86ab1e",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/transactions/{{transactionId}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Retrieves detailed information about a specific transaction by its ID."
+          },
+          "response": []
+        }
+      ],
+      "id": "de0caf60-bdb7-40ac-a96b-0025df4949fc"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "key",
+        "value": "x-api-key",
+        "type": "string"
+      }
+    ]
+  }
+}
