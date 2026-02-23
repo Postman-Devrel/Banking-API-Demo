@@ -1,241 +1,271 @@
 /**
- * In-Memory Database
- * Stores accounts and transactions in memory
- * In production, this would be replaced with a real database (PostgreSQL, MongoDB, etc.)
+ * PostgreSQL Database
+ * Stores accounts and transactions in PostgreSQL via pg pool
  */
 
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
 const Account = require('../models/Account');
 const Transaction = require('../models/Transaction');
 
 class Database {
   constructor() {
-    console.log('🔄 Initializing Database...');
-    this.accounts = new Map();
-    this.transactions = new Map();
-    this.apiKeys = new Set(['1234']); // Default API key
-    this.initializeSampleData();
-    console.log(`✅ Database initialized - Accounts: ${this.accounts.size}, API Keys: ${this.apiKeys.size}`);
+    console.log('Initializing PostgreSQL Database...');
+    this.pool = null;
   }
 
   /**
-   * Initialize with sample data for testing
+   * Initialize database: create tables and seed if empty
    */
-  initializeSampleData() {
-    // Create sample accounts (owned by default API key '1234')
-    const account1 = new Account('1', 'Nova Newman', 10000, 'COSMIC_COINS', '2023-04-10', 'STANDARD', '1234', false);
-    const account2 = new Account('2', 'Gary Galaxy', 237, 'COSMIC_COINS', '2023-04-10', 'PREMIUM', '1234', false);
-    const account3 = new Account('3', 'Luna Starlight', 5000, 'GALAXY_GOLD', '2024-01-10', 'BUSINESS', '1234', false);
+  async initialize() {
+    this.pool = require('./pool');
 
-    this.accounts.set('1', account1);
-    this.accounts.set('2', account2);
-    this.accounts.set('3', account3);
+    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    await this.pool.query(schema);
+    console.log('Database schema initialized');
 
-    // Create sample transactions
-    const transaction1 = new Transaction('1', '1', '2', 10000, 'COSMIC_COINS', '2024-01-10');
-    this.transactions.set('1', transaction1);
+    const { rows } = await this.pool.query('SELECT COUNT(*) FROM accounts');
+    if (parseInt(rows[0].count) === 0) {
+      await this.initializeSampleData();
+    }
+
+    const accountCount = await this.pool.query('SELECT COUNT(*) FROM accounts');
+    const keyCount = await this.pool.query('SELECT COUNT(*) FROM api_keys');
+    console.log(`Database ready - Accounts: ${accountCount.rows[0].count}, API Keys: ${keyCount.rows[0].count}`);
+  }
+
+  _rowToAccount(row) {
+    return new Account(
+      row.account_id,
+      row.owner,
+      parseFloat(row.balance),
+      row.currency,
+      row.created_at,
+      row.account_type,
+      row.api_key,
+      row.deleted
+    );
+  }
+
+  _rowToTransaction(row) {
+    return new Transaction(
+      row.transaction_id,
+      row.from_account_id,
+      row.to_account_id,
+      parseFloat(row.amount),
+      row.currency,
+      row.created_at
+    );
   }
 
   // ============ Account Operations ============
 
-  /**
-   * Get all accounts with optional filters
-   * @param {Object} filters - Optional filters (owner, createdAt, apiKey)
-   * @returns {Array<Account>}
-   */
-  getAccounts(filters = {}) {
-    let accounts = Array.from(this.accounts.values());
+  async getAccounts(filters = {}) {
+    let query = 'SELECT * FROM accounts WHERE deleted = FALSE';
+    const params = [];
+    let i = 1;
 
-    // Exclude deleted accounts
-    accounts = accounts.filter(acc => !acc.deleted);
-
-    // Filter by API key for ownership
     if (filters.apiKey) {
-      accounts = accounts.filter(acc => acc.apiKey === filters.apiKey);
+      query += ` AND api_key = $${i++}`;
+      params.push(filters.apiKey);
     }
-
     if (filters.owner) {
-      accounts = accounts.filter(acc => acc.owner.toLowerCase().includes(filters.owner.toLowerCase()));
+      query += ` AND owner ILIKE $${i++}`;
+      params.push(`%${filters.owner}%`);
     }
-
     if (filters.createdAt) {
-      accounts = accounts.filter(acc => acc.createdAt === filters.createdAt);
+      query += ` AND created_at = $${i++}`;
+      params.push(filters.createdAt);
     }
 
-    return accounts;
+    const { rows } = await this.pool.query(query, params);
+    return rows.map(row => this._rowToAccount(row));
   }
 
-  /**
-   * Get account by ID
-   * @param {string} accountId
-   * @returns {Account|null}
-   */
-  getAccountById(accountId) {
-    return this.accounts.get(accountId) || null;
-  }
-
-  /**
-   * Create new account
-   * @param {Object} accountData
-   * @param {string} apiKey - API key of the creator
-   * @returns {Account}
-   */
-  createAccount(accountData, apiKey) {
-    const accountId = uuidv4().split('-')[0]; // Generate short UUID
-    const account = new Account(
-      accountId,
-      accountData.owner,
-      accountData.balance || 0,
-      accountData.currency,
-      new Date().toISOString().split('T')[0],
-      accountData.accountType || 'STANDARD',
-      apiKey,
-      false
+  async getAccountById(accountId) {
+    const { rows } = await this.pool.query(
+      'SELECT * FROM accounts WHERE account_id = $1',
+      [accountId]
     );
-    this.accounts.set(accountId, account);
-    console.log(`✓ Account created: ${accountId} - Total accounts: ${this.accounts.size}`);
-    return account;
+    if (rows.length === 0) return null;
+    return this._rowToAccount(rows[0]);
   }
 
-  /**
-   * Update account
-   * @param {string} accountId
-   * @param {Object} updates
-   * @returns {Account|null}
-   */
-  updateAccount(accountId, updates) {
-    const account = this.accounts.get(accountId);
-    if (!account || account.deleted) {
-      return null;
-    }
+  async createAccount(accountData, apiKey) {
+    const accountId = uuidv4().split('-')[0];
+    const createdAt = new Date().toISOString().split('T')[0];
+    const balance = accountData.balance || 0;
+    const accountType = accountData.accountType || 'STANDARD';
+
+    await this.pool.query(
+      `INSERT INTO accounts (account_id, owner, balance, currency, created_at, account_type, api_key, deleted)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)`,
+      [accountId, accountData.owner, balance, accountData.currency, createdAt, accountType, apiKey]
+    );
+
+    console.log(`Account created: ${accountId}`);
+    return new Account(accountId, accountData.owner, balance, accountData.currency, createdAt, accountType, apiKey, false);
+  }
+
+  async updateAccount(accountId, updates) {
+    const setClauses = [];
+    const params = [];
+    let i = 1;
 
     if (updates.owner) {
-      account.owner = updates.owner;
+      setClauses.push(`owner = $${i++}`);
+      params.push(updates.owner);
     }
-
     if (updates.currency) {
-      account.currency = updates.currency;
+      setClauses.push(`currency = $${i++}`);
+      params.push(updates.currency);
     }
-
     if (updates.accountType) {
-      account.accountType = updates.accountType;
+      setClauses.push(`account_type = $${i++}`);
+      params.push(updates.accountType);
     }
 
-    return account;
+    if (setClauses.length === 0) return await this.getAccountById(accountId);
+
+    params.push(accountId);
+    await this.pool.query(
+      `UPDATE accounts SET ${setClauses.join(', ')} WHERE account_id = $${i} AND deleted = FALSE`,
+      params
+    );
+
+    return await this.getAccountById(accountId);
   }
 
-  /**
-   * Delete account (soft delete)
-   * @param {string} accountId
-   * @returns {boolean}
-   */
-  deleteAccount(accountId) {
-    const account = this.accounts.get(accountId);
-    if (!account || account.deleted) {
-      return false;
-    }
-    account.deleted = true;
-    console.log(`✓ Account soft deleted: ${accountId}`);
+  async deleteAccount(accountId) {
+    const result = await this.pool.query(
+      'UPDATE accounts SET deleted = TRUE WHERE account_id = $1 AND deleted = FALSE',
+      [accountId]
+    );
+    if (result.rowCount === 0) return false;
+    console.log(`Account soft deleted: ${accountId}`);
     return true;
   }
 
   // ============ Transaction Operations ============
 
-  /**
-   * Get all transactions with optional filters
-   * @param {Object} filters - Optional filters (fromAccountId, toAccountId, createdAt)
-   * @returns {Array<Transaction>}
-   */
-  getTransactions(filters = {}) {
-    let transactions = Array.from(this.transactions.values());
+  async getTransactions(filters = {}) {
+    let query = 'SELECT * FROM transactions WHERE 1=1';
+    const params = [];
+    let i = 1;
 
     if (filters.fromAccountId) {
-      transactions = transactions.filter(tx => tx.fromAccountId === filters.fromAccountId);
+      query += ` AND from_account_id = $${i++}`;
+      params.push(filters.fromAccountId);
     }
-
     if (filters.toAccountId) {
-      transactions = transactions.filter(tx => tx.toAccountId === filters.toAccountId);
+      query += ` AND to_account_id = $${i++}`;
+      params.push(filters.toAccountId);
     }
-
     if (filters.createdAt) {
-      transactions = transactions.filter(tx => tx.createdAt === filters.createdAt);
+      query += ` AND created_at = $${i++}`;
+      params.push(filters.createdAt);
     }
 
-    return transactions;
+    const { rows } = await this.pool.query(query, params);
+    return rows.map(row => this._rowToTransaction(row));
   }
 
-  /**
-   * Get transaction by ID
-   * @param {string} transactionId
-   * @returns {Transaction|null}
-   */
-  getTransactionById(transactionId) {
-    return this.transactions.get(transactionId) || null;
-  }
-
-  /**
-   * Check if account has any transactions
-   * @param {string} accountId
-   * @returns {boolean}
-   */
-  accountHasTransactions(accountId) {
-    const transactions = Array.from(this.transactions.values());
-    return transactions.some(tx =>
-      tx.fromAccountId === accountId || tx.toAccountId === accountId
+  async getTransactionById(transactionId) {
+    const { rows } = await this.pool.query(
+      'SELECT * FROM transactions WHERE transaction_id = $1',
+      [transactionId]
     );
+    if (rows.length === 0) return null;
+    return this._rowToTransaction(rows[0]);
   }
 
-  /**
-   * Create new transaction
-   * @param {Object} transactionData
-   * @returns {Transaction}
-   */
-  createTransaction(transactionData) {
-    const transactionId = uuidv4().split('-')[0]; // Generate short UUID
-    const transaction = new Transaction(
-      transactionId,
-      transactionData.fromAccountId,
-      transactionData.toAccountId,
-      transactionData.amount,
-      transactionData.currency,
-      new Date().toISOString().split('T')[0]
+  async accountHasTransactions(accountId) {
+    const { rows } = await this.pool.query(
+      'SELECT EXISTS(SELECT 1 FROM transactions WHERE from_account_id = $1 OR to_account_id = $1) AS has_tx',
+      [accountId]
     );
-    this.transactions.set(transactionId, transaction);
-    return transaction;
+    return rows[0].has_tx;
+  }
+
+  async createTransaction(transactionData) {
+    const transactionId = uuidv4().split('-')[0];
+    const createdAt = new Date().toISOString().split('T')[0];
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Deduct from source (if not a deposit)
+      if (transactionData.fromAccountId !== '0') {
+        await client.query(
+          'UPDATE accounts SET balance = balance - $1 WHERE account_id = $2',
+          [transactionData.amount, transactionData.fromAccountId]
+        );
+      }
+
+      // Add to destination
+      await client.query(
+        'UPDATE accounts SET balance = balance + $1 WHERE account_id = $2',
+        [transactionData.amount, transactionData.toAccountId]
+      );
+
+      // Insert transaction record
+      await client.query(
+        `INSERT INTO transactions (transaction_id, from_account_id, to_account_id, amount, currency, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [transactionId, transactionData.fromAccountId, transactionData.toAccountId,
+          transactionData.amount, transactionData.currency, createdAt]
+      );
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    return new Transaction(
+      transactionId, transactionData.fromAccountId, transactionData.toAccountId,
+      transactionData.amount, transactionData.currency, createdAt
+    );
   }
 
   // ============ API Key Operations ============
 
-  /**
-   * Generate new API key
-   * @returns {string}
-   */
-  generateApiKey() {
+  async generateApiKey() {
     const apiKey = uuidv4().replace(/-/g, '').substring(0, 16);
-    this.apiKeys.add(apiKey);
-    console.log(`✓ API Key generated: ${apiKey} - Total keys: ${this.apiKeys.size}`);
+    await this.pool.query(
+      'INSERT INTO api_keys (key) VALUES ($1) ON CONFLICT (key) DO NOTHING',
+      [apiKey]
+    );
+    console.log(`API Key generated: ${apiKey}`);
     return apiKey;
   }
 
-  /**
-   * Add an API key to the database
-   * @param {string} apiKey
-   */
-  addApiKey(apiKey) {
-    this.apiKeys.add(apiKey);
-    console.log(`✓ API Key registered: ${apiKey} - Total keys: ${this.apiKeys.size}`);
+  async addApiKey(apiKey) {
+    await this.pool.query(
+      'INSERT INTO api_keys (key) VALUES ($1) ON CONFLICT (key) DO NOTHING',
+      [apiKey]
+    );
+    console.log(`API Key registered: ${apiKey}`);
   }
 
-  /**
-   * Validate API key
-   * @param {string} apiKey
-   * @returns {boolean}
-   */
-  validateApiKey(apiKey) {
-    return this.apiKeys.has(apiKey);
+  async validateApiKey(apiKey) {
+    const { rows } = await this.pool.query(
+      'SELECT EXISTS(SELECT 1 FROM api_keys WHERE key = $1) AS valid',
+      [apiKey]
+    );
+    return rows[0].valid;
+  }
+
+  // ============ Seed Data ============
+
+  async initializeSampleData() {
+    const seed = require('./seed');
+    await seed(this.pool);
   }
 }
 
-// Export singleton instance
 module.exports = new Database();
-

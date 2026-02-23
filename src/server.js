@@ -16,6 +16,9 @@ const adminRoutes = require('./routes/admin');
 const accountRoutes = require('./routes/accounts');
 const transactionRoutes = require('./routes/transactions');
 
+// Import database
+const db = require('./database/db');
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,38 +82,51 @@ app.use(errorHandler);
 
 // ============ Start Server ============
 
-const server = app.listen(PORT, () => {
-  console.log('╔════════════════════════════════════════════╗');
-  console.log('║   🌌 Intergalactic Bank API Server 🌌    ║');
-  console.log('╚════════════════════════════════════════════╝');
-  console.log('');
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 URL: http://localhost:${PORT}`);
-  console.log(`💚 Health Check: http://localhost:${PORT}/health`);
-  console.log('');
-  console.log('Available endpoints:');
-  console.log('  - GET  /api/v1/auth');
-  console.log('  - GET  /api/v1/accounts');
-  console.log('  - POST /api/v1/accounts');
-  console.log('  - GET  /api/v1/accounts/:accountId');
-  console.log('  - PATCH /api/v1/accounts/:accountId');
-  console.log('  - DELETE /api/v1/accounts/:accountId');
-  console.log('  - GET  /api/v1/transactions');
-  console.log('  - POST /api/v1/transactions');
-  console.log('  - GET  /api/v1/transactions/:transactionId');
-  console.log('');
-  console.log('Press CTRL+C to stop the server');
-  console.log('════════════════════════════════════════════');
-});
+async function startServer() {
+  try {
+    await db.initialize();
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-  });
-});
+    const server = app.listen(PORT, () => {
+      console.log('╔════════════════════════════════════════════╗');
+      console.log('║   🌌 Intergalactic Bank API Server 🌌    ║');
+      console.log('╚════════════════════════════════════════════╝');
+      console.log('');
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 URL: http://localhost:${PORT}`);
+      console.log(`💚 Health Check: http://localhost:${PORT}/health`);
+      console.log('');
+      console.log('Available endpoints:');
+      console.log('  - GET  /api/v1/auth');
+      console.log('  - GET  /api/v1/accounts');
+      console.log('  - POST /api/v1/accounts');
+      console.log('  - GET  /api/v1/accounts/:accountId');
+      console.log('  - PATCH /api/v1/accounts/:accountId');
+      console.log('  - DELETE /api/v1/accounts/:accountId');
+      console.log('  - GET  /api/v1/transactions');
+      console.log('  - POST /api/v1/transactions');
+      console.log('  - GET  /api/v1/transactions/:transactionId');
+      console.log('');
+      console.log('Press CTRL+C to stop the server');
+      console.log('════════════════════════════════════════════');
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM signal received: closing HTTP server');
+      server.close(async () => {
+        console.log('HTTP server closed');
+        const pool = require('./database/pool');
+        await pool.end();
+        console.log('Database pool closed');
+      });
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    throw err;
+  }
+}
+
+startServer();
 
 module.exports = app;
-

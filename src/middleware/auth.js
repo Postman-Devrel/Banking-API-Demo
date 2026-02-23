@@ -8,27 +8,35 @@ const db = require('../database/db');
 /**
  * Middleware to validate API key
  */
-const validateApiKey = (req, res, next) => {
+const validateApiKey = async (req, res, next) => {
+  try {
+    const apiKey = req.headers['x-api-key'] || req.headers['api-key'];
 
-  const apiKey = req.headers['x-api-key'] || req.headers['api-key'];
+    if (!apiKey) {
+      return res.status(401).json({
+        error: {
+          name: 'authenticationError',
+          message: 'API key is required. Please provide an API key in the x-api-key header.'
+        }
+      });
+    }
 
-  if (!apiKey) {
-    return res.status(401).json({
+    // If API key doesn't exist, automatically register it
+    if (!(await db.validateApiKey(apiKey))) {
+      await db.addApiKey(apiKey);
+    }
+
+    // Store API key in request for potential admin check
+    req.apiKey = apiKey;
+    next();
+  } catch (error) {
+    res.status(500).json({
       error: {
-        name: 'authenticationError',
-        message: 'API key is required. Please provide an API key in the x-api-key header.'
+        name: 'serverError',
+        message: 'Authentication check failed'
       }
     });
   }
-
-  // If API key doesn't exist, automatically register it
-  if (!db.validateApiKey(apiKey)) {
-    db.addApiKey(apiKey);
-  }
-
-  // Store API key in request for potential admin check
-  req.apiKey = apiKey;
-  next();
 };
 
 /**
@@ -37,7 +45,7 @@ const validateApiKey = (req, res, next) => {
  */
 const requireAdmin = (req, res, next) => {
   const adminKey = process.env.ADMIN_API_KEY || '1234';
-  
+
   if (req.apiKey !== adminKey) {
     return res.status(403).json({
       error: {
@@ -54,4 +62,3 @@ module.exports = {
   validateApiKey,
   requireAdmin
 };
-

@@ -4,9 +4,10 @@
 
 const { validateApiKey, requireAdmin } = require('../../../src/middleware/auth');
 
-// Mock the database
+// Mock the database with async methods
 jest.mock('../../../src/database/db', () => ({
-  validateApiKey: jest.fn()
+  validateApiKey: jest.fn(),
+  addApiKey: jest.fn()
 }));
 
 const db = require('../../../src/database/db');
@@ -27,11 +28,11 @@ describe('Authentication Middleware', () => {
   });
 
   describe('validateApiKey()', () => {
-    test('should accept valid API key from x-api-key header', () => {
+    test('should accept valid API key from x-api-key header', async () => {
       req.headers['x-api-key'] = 'valid-key';
-      db.validateApiKey.mockReturnValue(true);
+      db.validateApiKey.mockResolvedValue(true);
 
-      validateApiKey(req, res, next);
+      await validateApiKey(req, res, next);
 
       expect(db.validateApiKey).toHaveBeenCalledWith('valid-key');
       expect(req.apiKey).toBe('valid-key');
@@ -39,19 +40,19 @@ describe('Authentication Middleware', () => {
       expect(res.status).not.toHaveBeenCalled();
     });
 
-    test('should accept valid API key from api-key header', () => {
+    test('should accept valid API key from api-key header', async () => {
       req.headers['api-key'] = 'valid-key';
-      db.validateApiKey.mockReturnValue(true);
+      db.validateApiKey.mockResolvedValue(true);
 
-      validateApiKey(req, res, next);
+      await validateApiKey(req, res, next);
 
       expect(db.validateApiKey).toHaveBeenCalledWith('valid-key');
       expect(req.apiKey).toBe('valid-key');
       expect(next).toHaveBeenCalled();
     });
 
-    test('should reject request with missing API key', () => {
-      validateApiKey(req, res, next);
+    test('should reject request with missing API key', async () => {
+      await validateApiKey(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
@@ -63,20 +64,16 @@ describe('Authentication Middleware', () => {
       expect(next).not.toHaveBeenCalled();
     });
 
-    test('should reject request with invalid API key', () => {
-      req.headers['x-api-key'] = 'invalid-key';
-      db.validateApiKey.mockReturnValue(false);
+    test('should auto-register unknown API key', async () => {
+      req.headers['x-api-key'] = 'new-key';
+      db.validateApiKey.mockResolvedValue(false);
+      db.addApiKey.mockResolvedValue();
 
-      validateApiKey(req, res, next);
+      await validateApiKey(req, res, next);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        error: {
-          name: 'authenticationError',
-          message: expect.stringContaining('Invalid API key')
-        }
-      });
-      expect(next).not.toHaveBeenCalled();
+      expect(db.addApiKey).toHaveBeenCalledWith('new-key');
+      expect(req.apiKey).toBe('new-key');
+      expect(next).toHaveBeenCalled();
     });
   });
 
@@ -108,16 +105,14 @@ describe('Authentication Middleware', () => {
     test('should use default admin key if env variable not set', () => {
       const originalAdminKey = process.env.ADMIN_API_KEY;
       delete process.env.ADMIN_API_KEY;
-      
+
       req.apiKey = '1234';
 
       requireAdmin(req, res, next);
 
       expect(next).toHaveBeenCalled();
 
-      // Restore
       process.env.ADMIN_API_KEY = originalAdminKey;
     });
   });
 });
-

@@ -13,7 +13,7 @@ const { validateApiKey } = require('../middleware/auth');
  * GET /api/v1/accounts
  * List all accounts with optional filters
  */
-router.get('/', validateApiKey, (req, res) => {
+router.get('/', validateApiKey, async (req, res) => {
   try {
     const { owner, createdAt } = req.query;
 
@@ -22,7 +22,7 @@ router.get('/', validateApiKey, (req, res) => {
     if (owner) filters.owner = owner;
     if (createdAt) filters.createdAt = createdAt;
 
-    const accounts = db.getAccounts(filters);
+    const accounts = await db.getAccounts(filters);
 
     res.status(200).json({
       accounts: accounts.map(acc => acc.toJSON())
@@ -41,7 +41,7 @@ router.get('/', validateApiKey, (req, res) => {
  * POST /api/v1/accounts
  * Create a new account
  */
-router.post('/', validateApiKey, (req, res) => {
+router.post('/', validateApiKey, async (req, res) => {
   try {
     const accountData = req.body;
 
@@ -57,7 +57,7 @@ router.post('/', validateApiKey, (req, res) => {
     }
 
     // Create account with API key for ownership
-    const account = db.createAccount(accountData, req.apiKey);
+    const account = await db.createAccount(accountData, req.apiKey);
 
     res.status(201).json({
       account: {
@@ -78,12 +78,12 @@ router.post('/', validateApiKey, (req, res) => {
  * GET /api/v1/accounts/:id
  * Get a single account by ID
  */
-router.get('/:id', validateApiKey, (req, res) => {
+router.get('/:id', validateApiKey, async (req, res) => {
   try {
     const { id } = req.params;
 
     // Get account from database
-    const account = db.getAccountById(id);
+    const account = await db.getAccountById(id);
 
     // Check if account exists
     if (!account || account.deleted) {
@@ -122,13 +122,13 @@ router.get('/:id', validateApiKey, (req, res) => {
  * PUT /api/v1/accounts/:id
  * Update an existing account
  */
-router.put('/:id', validateApiKey, (req, res) => {
+router.put('/:id', validateApiKey, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
     // Get account from database
-    const account = db.getAccountById(id);
+    const account = await db.getAccountById(id);
 
     // Check if account exists
     if (!account || account.deleted) {
@@ -171,7 +171,7 @@ router.put('/:id', validateApiKey, (req, res) => {
     }
 
     // Validate updatable fields
-    const validationData = { ...account, ...updates };
+    const validationData = Object.assign({}, account, updates);
     const validation = Account.validate(validationData);
     if (!validation.isValid) {
       return res.status(400).json({
@@ -183,7 +183,7 @@ router.put('/:id', validateApiKey, (req, res) => {
     }
 
     // Update account
-    const updatedAccount = db.updateAccount(id, updates);
+    const updatedAccount = await db.updateAccount(id, updates);
 
     res.status(200).json({
       account: updatedAccount.toJSON()
@@ -202,12 +202,12 @@ router.put('/:id', validateApiKey, (req, res) => {
  * DELETE /api/v1/accounts/:id
  * Delete an account (soft delete)
  */
-router.delete('/:id', validateApiKey, (req, res) => {
+router.delete('/:id', validateApiKey, async (req, res) => {
   try {
     const { id } = req.params;
 
     // Get account from database
-    const account = db.getAccountById(id);
+    const account = await db.getAccountById(id);
 
     // Check if account exists
     if (!account || account.deleted) {
@@ -230,10 +230,10 @@ router.delete('/:id', validateApiKey, (req, res) => {
     }
 
     // Check if account has transactions
-    const hasTransactions = db.accountHasTransactions(id);
+    const hasTransactions = await db.accountHasTransactions(id);
 
     // Always perform soft delete
-    const deleted = db.deleteAccount(id);
+    const deleted = await db.deleteAccount(id);
 
     if (!deleted) {
       return res.status(500).json({
@@ -260,4 +260,3 @@ router.delete('/:id', validateApiKey, (req, res) => {
 });
 
 module.exports = router;
-

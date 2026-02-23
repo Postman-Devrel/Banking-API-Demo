@@ -4,6 +4,10 @@
 
 const request = require('supertest');
 const express = require('express');
+
+// Mock database (uses src/database/__mocks__/db.js)
+jest.mock('../../src/database/db');
+
 const adminRoutes = require('../../src/routes/admin');
 
 // Create test app

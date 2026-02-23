@@ -31,3 +31,6 @@ coverage/
 
 # Jest cache
 .jest/
+
+# Railway
+.railway/

@@ -11,10 +11,10 @@ const db = require('../database/db');
  * GET /api/v1/auth
  * Generate a new API key
  */
-router.get('/auth', (req, res) => {
+router.get('/auth', async (req, res) => {
   try {
-    const apiKey = db.generateApiKey();
-    
+    const apiKey = await db.generateApiKey();
+
     res.status(200).json({
       apiKey: apiKey
     });
@@ -29,4 +29,3 @@ router.get('/auth', (req, res) => {
 });
 
 module.exports = router;
-

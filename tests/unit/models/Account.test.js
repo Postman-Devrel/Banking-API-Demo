@@ -206,6 +206,7 @@ describe('Account Model', () => {
       expect(json).toEqual({
         accountId: '1',
         owner: 'John Doe',
+        accountType: 'STANDARD',
         createdAt: '2024-01-10',
         balance: 1000,
         currency: 'COSMIC_COINS'

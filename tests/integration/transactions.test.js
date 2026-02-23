@@ -6,10 +6,13 @@ const request = require('supertest');
 const express = require('express');
 const transactionRoutes = require('../../src/routes/transactions');
 
+// Mock database (uses src/database/__mocks__/db.js)
+jest.mock('../../src/database/db');
+
 // Mock auth middleware
 jest.mock('../../src/middleware/auth', () => ({
   validateApiKey: (req, res, next) => {
-    req.apiKey = req.headers['x-api-key'] || 'test-key';
+    req.apiKey = req.headers['x-api-key'] || '1234';
     next();
   }
 }));
@@ -18,11 +21,10 @@ const db = require('../../src/database/db');
 
 // Create fresh database for each test
 beforeEach(() => {
-  // Clear and reinitialize
   db.accounts.clear();
   db.transactions.clear();
   db.apiKeys.clear();
-  db.apiKeys.add('1234'); // Re-add default API key
+  db.apiKeys.add('1234');
   db.initializeSampleData();
 });
 
@@ -36,7 +38,7 @@ describe('Transaction Routes', () => {
     test('should return all transactions', async () => {
       const response = await request(app)
         .get('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(response.body).toHaveProperty('transactions');
@@ -46,7 +48,7 @@ describe('Transaction Routes', () => {
     test('should filter transactions by fromAccountId', async () => {
       const response = await request(app)
         .get('/api/v1/transactions?fromAccountId=1')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(Array.isArray(response.body.transactions)).toBe(true);
@@ -58,7 +60,7 @@ describe('Transaction Routes', () => {
     test('should filter transactions by toAccountId', async () => {
       const response = await request(app)
         .get('/api/v1/transactions?toAccountId=2')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(Array.isArray(response.body.transactions)).toBe(true);
@@ -70,7 +72,7 @@ describe('Transaction Routes', () => {
     test('should filter transactions by createdAt', async () => {
       const response = await request(app)
         .get('/api/v1/transactions?createdAt=2024-01-10')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(Array.isArray(response.body.transactions)).toBe(true);
@@ -82,7 +84,7 @@ describe('Transaction Routes', () => {
     test('should return empty array for non-matching filters', async () => {
       const response = await request(app)
         .get('/api/v1/transactions?fromAccountId=999')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(response.body.transactions).toEqual([]);
@@ -93,7 +95,7 @@ describe('Transaction Routes', () => {
     test('should return a specific transaction', async () => {
       const response = await request(app)
         .get('/api/v1/transactions/1')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(response.body).toHaveProperty('transaction');
@@ -107,7 +109,7 @@ describe('Transaction Routes', () => {
     test('should return 404 for non-existent transaction', async () => {
       const response = await request(app)
         .get('/api/v1/transactions/999')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(404);
 
       expect(response.body.error.name).toBe('instanceNotFoundError');
@@ -125,7 +127,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(201);
 
@@ -135,8 +137,8 @@ describe('Transaction Routes', () => {
 
     test('should update balances after transfer', async () => {
       // Get initial balances
-      const account1Before = db.getAccountById('1');
-      const account2Before = db.getAccountById('2');
+      const account1Before = await db.getAccountById('1');
+      const account2Before = await db.getAccountById('2');
       const initialBalance1 = account1Before.balance;
       const initialBalance2 = account2Before.balance;
 
@@ -149,13 +151,13 @@ describe('Transaction Routes', () => {
 
       await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(201);
 
       // Check updated balances
-      const account1After = db.getAccountById('1');
-      const account2After = db.getAccountById('2');
+      const account1After = await db.getAccountById('1');
+      const account2After = await db.getAccountById('2');
 
       expect(account1After.balance).toBe(initialBalance1 - 500);
       expect(account2After.balance).toBe(initialBalance2 + 500);
@@ -171,7 +173,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(201);
 
@@ -179,7 +181,7 @@ describe('Transaction Routes', () => {
     });
 
     test('should update balance after deposit', async () => {
-      const accountBefore = db.getAccountById('2');
+      const accountBefore = await db.getAccountById('2');
       const initialBalance = accountBefore.balance;
 
       const transaction = {
@@ -191,11 +193,11 @@ describe('Transaction Routes', () => {
 
       await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(201);
 
-      const accountAfter = db.getAccountById('2');
+      const accountAfter = await db.getAccountById('2');
       expect(accountAfter.balance).toBe(initialBalance + 1000);
     });
 
@@ -209,7 +211,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(403);
 
@@ -226,7 +228,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(404);
 
@@ -243,7 +245,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(404);
 
@@ -260,7 +262,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(400);
 
@@ -276,7 +278,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(400);
 
@@ -293,7 +295,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(400);
 
@@ -310,7 +312,7 @@ describe('Transaction Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/transactions')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(transaction)
         .expect(400);
 

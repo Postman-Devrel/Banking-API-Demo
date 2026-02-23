@@ -6,10 +6,13 @@ const request = require('supertest');
 const express = require('express');
 const accountRoutes = require('../../src/routes/accounts');
 
+// Mock database (uses src/database/__mocks__/db.js)
+jest.mock('../../src/database/db');
+
 // Mock auth middleware
 jest.mock('../../src/middleware/auth', () => ({
   validateApiKey: (req, res, next) => {
-    req.apiKey = req.headers['x-api-key'] || 'test-key';
+    req.apiKey = req.headers['x-api-key'] || '1234';
     next();
   },
   requireAdmin: (req, res, next) => {
@@ -48,7 +51,7 @@ describe('Account Routes', () => {
     test('should return all accounts', async () => {
       const response = await request(app)
         .get('/api/v1/accounts')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(response.body).toHaveProperty('accounts');
@@ -59,7 +62,7 @@ describe('Account Routes', () => {
     test('should filter accounts by owner', async () => {
       const response = await request(app)
         .get('/api/v1/accounts?owner=Nova')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(response.body.accounts.length).toBeGreaterThan(0);
@@ -69,7 +72,7 @@ describe('Account Routes', () => {
     test('should filter accounts by createdAt', async () => {
       const response = await request(app)
         .get('/api/v1/accounts?createdAt=2023-04-10')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(Array.isArray(response.body.accounts)).toBe(true);
@@ -81,7 +84,7 @@ describe('Account Routes', () => {
     test('should return empty array for non-matching filters', async () => {
       const response = await request(app)
         .get('/api/v1/accounts?owner=NonExistent')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(200);
 
       expect(response.body.accounts).toEqual([]);
@@ -101,7 +104,7 @@ describe('Account Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/accounts')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(newAccount)
         .expect(201);
 
@@ -117,7 +120,7 @@ describe('Account Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/accounts')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(invalidAccount)
         .expect(400);
 
@@ -133,7 +136,7 @@ describe('Account Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/accounts')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(invalidAccount)
         .expect(400);
 
@@ -149,7 +152,7 @@ describe('Account Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/accounts')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .send(invalidAccount)
         .expect(400);
 
@@ -158,14 +161,14 @@ describe('Account Routes', () => {
   });
 
   describe('PATCH /api/v1/accounts/:accountId', () => {
-    test('should update account with admin key', async () => {
+    test('should update account with owner key', async () => {
       const updates = {
         owner: 'Updated Name'
       };
 
       const response = await request(app)
-        .patch('/api/v1/accounts/1')
-        .set('x-api-key', 'admin-key')
+        .put('/api/v1/accounts/1')
+        .set('x-api-key', '1234')
         .send(updates)
         .expect(200);
 
@@ -179,7 +182,7 @@ describe('Account Routes', () => {
       };
 
       await request(app)
-        .patch('/api/v1/accounts/1')
+        .put('/api/v1/accounts/1')
         .set('x-api-key', 'regular-key')
         .send(updates)
         .expect(403);
@@ -191,7 +194,7 @@ describe('Account Routes', () => {
       };
 
       await request(app)
-        .patch('/api/v1/accounts/999')
+        .put('/api/v1/accounts/999')
         .set('x-api-key', 'admin-key')
         .send(updates)
         .expect(404);
@@ -199,16 +202,16 @@ describe('Account Routes', () => {
   });
 
   describe('DELETE /api/v1/accounts/:accountId', () => {
-    test('should delete account with admin key', async () => {
+    test('should delete account with owner key', async () => {
       await request(app)
         .delete('/api/v1/accounts/1')
-        .set('x-api-key', 'admin-key')
-        .expect(204);
+        .set('x-api-key', '1234')
+        .expect(200);
 
       // Verify account is deleted
       await request(app)
         .get('/api/v1/accounts/1')
-        .set('x-api-key', 'test-key')
+        .set('x-api-key', '1234')
         .expect(404);
     });
 

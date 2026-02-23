@@ -9,10 +9,13 @@ const adminRoutes = require('../../src/routes/admin');
 const accountRoutes = require('../../src/routes/accounts');
 const transactionRoutes = require('../../src/routes/transactions');
 
+// Mock database (uses src/database/__mocks__/db.js)
+jest.mock('../../src/database/db');
+
 // Mock auth middleware for testing
 jest.mock('../../src/middleware/auth', () => ({
   validateApiKey: (req, res, next) => {
-    req.apiKey = req.headers['x-api-key'] || 'test-key';
+    req.apiKey = req.headers['x-api-key'] || '1234';
     next();
   },
   requireAdmin: (req, res, next) => {
@@ -50,7 +53,7 @@ app.use('/api/v1/transactions', transactionRoutes);
 describe('End-to-End Workflows', () => {
   describe('Error Handling Workflow', () => {
     test('should handle currency mismatch across workflow', async () => {
-      const apiKey = 'test-key';
+      const apiKey = '1234';
 
       // Account 3 uses GALAXY_GOLD, try to transfer COSMIC_COINS
       await request(app)
@@ -68,7 +71,7 @@ describe('End-to-End Workflows', () => {
 
   describe('Query and Filter Workflow', () => {
     test('should filter and query data across multiple endpoints', async () => {
-      const apiKey = 'test-key';
+      const apiKey = '1234';
 
       // Create multiple transactions
       await request(app)
