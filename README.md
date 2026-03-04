@@ -1,146 +1,173 @@
-# 🌌 Intergalactic Bank API
+# Intergalactic Bank API
 
-REST API for managing bank accounts and transactions with multi-currency support (COSMIC_COINS, GALAXY_GOLD, MOON_BUCKS).
+REST API for managing bank accounts and transactions with multi-currency support (**COSMIC_COINS**, **GALAXY_GOLD**, **MOON_BUCKS**).
+
+---
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [API Overview](#api-overview)
+- [Authentication](#authentication)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Domain Reference](#domain-reference)
+- [Usage Examples](#usage-examples)
+- [Error Handling](#error-handling)
+- [Tech Stack](#tech-stack)
+- [Extending the API](#extending-the-api)
+
+---
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Start the server
 npm run dev
+```
 
-# Verify it's running
+Server: **http://localhost:3000**
+
+Verify:
+
+```bash
 curl http://localhost:3000/health
 ```
 
-Server runs on **http://localhost:3000** by default.
+**Postman:** Import `OpenAPI/Bank API Reference Documentation.postman_collection.json`, set `baseUrl` to `http://localhost:3000` and `apiKey` to `1234`.
+
+---
 
 ## Features
 
-- **Account Management** - Create, view, update, delete accounts (ownership-based)
-- **Transaction Processing** - Transfer funds between accounts or make deposits
-- **Multi-Currency** - COSMIC_COINS, GALAXY_GOLD, MOON_BUCKS
-- **API Key Auth** - Secure endpoints with API keys
-- **Rate Limiting** - 300 requests/minute per key
-- **Ownership Control** - Users can only access their own accounts
+| Area | Description |
+|------|--------------|
+| **Accounts** | Create, read, update, delete (ownership-based). |
+| **Transactions** | Transfers between accounts; deposits from external source. |
+| **Currencies** | COSMIC_COINS, GALAXY_GOLD, MOON_BUCKS. |
+| **Auth** | API key in `x-api-key` header. |
+| **Rate limit** | 300 requests per minute per key. |
+| **Ownership** | Each key only accesses accounts created with that key. |
 
-## API Testing
+---
 
-**Use the Postman Collection** for complete API documentation and testing:
-1. Import `OpenAPI/Bank API Reference Documentation.postman_collection.json` into Postman
-2. Set `baseUrl` variable to `http://localhost:3000`
-3. Set `apiKey` variable to `1234` (default admin key)
-4. All endpoints are pre-configured with examples
+## API Overview
 
-## Key Endpoints
+### Endpoints
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/health` | GET | No | Health check |
-| `/api/v1/auth` | GET | No | Generate API key |
-| `/api/v1/accounts` | GET | Yes | List your accounts |
-| `/api/v1/accounts/:id` | GET | Yes | Get single account |
-| `/api/v1/accounts` | POST | Yes | Create account |
-| `/api/v1/accounts/:id` | PUT | Yes | Update account (owner/type) |
-| `/api/v1/accounts/:id` | DELETE | Yes | Delete account (soft) |
-| `/api/v1/transactions` | GET | Yes | List transactions |
-| `/api/v1/transactions/:id` | GET | Yes | Get transaction |
-| `/api/v1/transactions` | POST | Yes | Transfer/deposit |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Health check. |
+| GET | `/api/v1/auth` | No | Generate a new API key. |
+| GET | `/api/v1/accounts` | Yes | List accounts for the current key. |
+| GET | `/api/v1/accounts/:id` | Yes | Get one account by ID. |
+| POST | `/api/v1/accounts` | Yes | Create an account. |
+| PUT | `/api/v1/accounts/:id` | Yes | Update account (owner name, account type only). |
+| DELETE | `/api/v1/accounts/:id` | Yes | Soft-delete account. |
+| GET | `/api/v1/transactions` | Yes | List transactions (query params supported). |
+| GET | `/api/v1/transactions/:id` | Yes | Get one transaction by ID. |
+| POST | `/api/v1/transactions` | Yes | Transfer funds or deposit (body defines type). |
+
+Base URL: `http://localhost:3000` (or your configured `PORT`).
+
+---
 
 ## Authentication
 
-Include your API key in all authenticated requests:
+- **Header:** `x-api-key: <your-api-key>`
+- **Get a key:** `GET /api/v1/auth` (no auth required).
+- **Default admin key:** `1234` (from `ADMIN_API_KEY` in `.env`).
 
-```
-Header: x-api-key: your-key-here
-```
+All endpoints except `/health`, `/`, and `/api/v1/auth` require this header.
 
-Generate a new key: `GET /api/v1/auth`
-Default admin key: `1234`
+---
 
 ## Configuration
 
-Create `.env` file (optional):
+Optional `.env` (copy from `.env.example` if present):
 
-```bash
-PORT=3000
-ADMIN_API_KEY=1234
-RATE_LIMIT_REQUESTS=300
-RATE_LIMIT_WINDOW_MS=60000
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server port. |
+| `ADMIN_API_KEY` | `1234` | Admin API key. |
+| `RATE_LIMIT_REQUESTS` | `300` | Max requests per window. |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms). |
+
+---
 
 ## Project Structure
 
 ```
 src/
-├── server.js              # Entry point
-├── database/db.js         # In-memory storage
+├── server.js              # Entry point, middleware, route mounting
+├── database/
+│   └── db.js              # In-memory storage (singleton)
 ├── models/
-│   ├── Account.js         # Account model + validation
+│   ├── Account.js         # Account model and validation
 │   └── Transaction.js     # Transaction model
 ├── routes/
-│   ├── admin.js          # API key generation
-│   ├── accounts.js       # Account CRUD
-│   └── transactions.js   # Transaction processing
+│   ├── admin.js           # GET /api/v1/auth (key generation)
+│   ├── accounts.js        # Account CRUD
+│   └── transactions.js    # Transactions list, get, transfer/deposit
 └── middleware/
-    ├── auth.js           # API key validation
-    ├── errorHandler.js   # Error handling
-    └── rateLimit.js      # Rate limiting
+    ├── auth.js            # API key validation and admin check
+    ├── errorHandler.js    # Central error handler
+    └── rateLimit.js       # Per-key rate limiting
 ```
+
+---
 
 ## Development
 
-```bash
-# Development mode (auto-reload)
-npm run dev
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Run with auto-reload. |
+| `npm start` | Run in production mode. |
+| `npm test` | Run test suite. |
+| `npm test -- --coverage` | Run tests with coverage. |
+| `npm run lint` | Lint; use `npm run lint:fix` to fix. |
 
-# Production mode
-npm start
+---
 
-# Run tests
-npm test
+## Domain Reference
 
-# Run tests with coverage
-npm test -- --coverage
+### Account types
 
-# Lint code
-npm run lint
-```
+- **STANDARD** — Default.
+- **PREMIUM** — Premium features.
+- **BUSINESS** — Business account.
 
-## Sample Data
+### Currencies
 
-On startup, the server creates sample accounts:
-- **Account 1**: Nova Newman (10,000 COSMIC_COINS)
-- **Account 2**: Gary Galaxy (237 COSMIC_COINS)
-- **Account 3**: Luna Starlight (5,000 GALAXY_GOLD)
+- **COSMIC_COINS** — Universal.
+- **GALAXY_GOLD** — Premium.
+- **MOON_BUCKS** — Alternative.
 
-All owned by admin key `1234`.
+### Sample data (on startup)
 
-## Account Types
+Three accounts are created, all owned by admin key `1234`:
 
-- **STANDARD** - Basic account (default)
-- **PREMIUM** - Premium features
-- **BUSINESS** - Business account
+- Account 1: Nova Newman — 10,000 COSMIC_COINS  
+- Account 2: Gary Galaxy — 237 COSMIC_COINS  
+- Account 3: Luna Starlight — 5,000 GALAXY_GOLD  
 
-## Currencies
+### Rules
 
-- **COSMIC_COINS** - Universal currency
-- **GALAXY_GOLD** - Premium currency
-- **MOON_BUCKS** - Alternative currency
+- **Ownership:** A key can only access accounts created with that key.
+- **Soft delete:** Deleted accounts are marked deleted; history is kept.
+- **Balance/currency:** Change only via transactions, not via account update.
+- **Editable fields:** Only owner name and account type on existing accounts.
 
-## Important Notes
+---
 
-- **Ownership**: Users can only access accounts created with their API key
-- **Soft Delete**: Deleted accounts are marked as deleted (transaction history preserved)
-- **Immutable Fields**: Balance and currency can only change via transactions
-- **Account Updates**: Only owner name and account type are editable
+## Usage Examples
 
-## Common Tasks
+### Create an account
 
-### Create an Account
-Use Postman collection or POST to `/api/v1/accounts`:
+`POST /api/v1/accounts` with body:
+
 ```json
 {
   "owner": "John Doe",
@@ -150,60 +177,83 @@ Use Postman collection or POST to `/api/v1/accounts`:
 }
 ```
 
-### Transfer Funds
-POST to `/api/v1/transactions`:
+### Transfer between accounts
+
+`POST /api/v1/transactions` with body:
+
 ```json
 {
-  "fromAccountId": "123",
-  "toAccountId": "456",
+  "fromAccountId": "account-uuid-1",
+  "toAccountId": "account-uuid-2",
   "amount": 500,
   "currency": "COSMIC_COINS"
 }
 ```
 
-### Deposit Money
-Use `"0"` as `fromAccountId` to deposit from external source.
+### Deposit from external source
 
-## Error Responses
+Same endpoint; use `fromAccountId: "0"`:
 
-All errors follow this format:
+```json
+{
+  "fromAccountId": "0",
+  "toAccountId": "account-uuid",
+  "amount": 100,
+  "currency": "COSMIC_COINS"
+}
+```
+
+---
+
+## Error Handling
+
+All error responses use this shape:
+
 ```json
 {
   "error": {
     "name": "errorType",
-    "message": "Description of error"
+    "message": "Human-readable description"
   }
 }
 ```
 
-Common status codes:
-- **400** - Validation error
-- **401** - Missing/invalid API key
-- **403** - Insufficient permissions
-- **404** - Resource not found
-- **429** - Rate limit exceeded
-- **500** - Server error
-
-## Tech Stack
-
-- **Node.js** + **Express.js**
-- **In-memory storage** (Map-based, easily replaceable)
-- **API Key authentication**
-- **Jest** for testing
-
-## Replacing In-Memory Storage
-
-To use a real database:
-1. Install database driver (`pg`, `mongodb`, etc.)
-2. Update `src/database/db.js` with connection logic
-3. Implement CRUD methods using your DB client
-
-## License
-
-ISC
+| Status | Meaning |
+|--------|---------|
+| 400 | Validation or bad request. |
+| 401 | Missing or invalid API key. |
+| 403 | Not allowed (e.g. wrong account owner). |
+| 404 | Resource not found. |
+| 429 | Rate limit exceeded. |
+| 500 | Server error. |
 
 ---
 
-**Need detailed API docs?** → Import the Postman collection
-**Found a bug?** → Check the tests with `npm test`
-**Need help?** → Review `CLAUDE.md` for architecture details
+## Tech Stack
+
+- **Runtime:** Node.js  
+- **Framework:** Express.js  
+- **Storage:** In-memory (Map-based; swappable)  
+- **Testing:** Jest  
+- **Auth:** API key via header  
+
+---
+
+## Extending the API
+
+**Using a real database:**
+
+1. Install the driver (e.g. `pg`, `mongodb`).
+2. Update `src/database/db.js` with connection and CRUD using the same interface so routes stay unchanged.
+
+---
+
+## License
+
+ISC.
+
+---
+
+**Detailed API docs** → Postman collection  
+**Architecture** → `CLAUDE.md`  
+**Issues** → Run `npm test` and check tests
