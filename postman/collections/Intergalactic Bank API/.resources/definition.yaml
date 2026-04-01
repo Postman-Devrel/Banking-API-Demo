@@ -1,0 +1,8 @@
+$kind: collection
+name: Intergalactic Bank API
+description: API collection for the Intergalactic Bank - manage accounts, transactions, and more across the galaxy.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:3000'
+  - key: apiKey
+    value: '1234'

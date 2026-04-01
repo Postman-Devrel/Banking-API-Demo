@@ -1,0 +1,18 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/accounts'
+order: 3000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "owner": "John Doe",
+      "currency": "COSMIC_COINS",
+      "balance": 1000,
+      "accountType": "STANDARD"
+    }

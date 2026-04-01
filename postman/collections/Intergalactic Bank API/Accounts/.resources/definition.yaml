@@ -1,0 +1,3 @@
+$kind: collection
+description: Endpoints for managing bank accounts - create, read, update, and delete accounts.
+order: 2000

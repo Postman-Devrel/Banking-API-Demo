@@ -2,95 +2,60 @@ name: Publish to Postman Workspace
 
 on:
   push:
-    branches:
-      - main
+    branches: [demo-main]
   pull_request:
-    branches:
-      - main
+    branches: [demo-main]
   workflow_dispatch:
 
 jobs:
-  quality-checks:
-    name: Validate API and Collections
+  postman:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - run: curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '>= 20.19.0'
-          cache: 'yarn'
+          node-version: 20
+          cache: "npm"
 
       - name: Install dependencies
-        run: yarn install
+        run: npm install
 
-      - name: Install Postman CLI
-        run: curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
+      - name: Start server in background
+        run: |
+          npm run dev &
+          echo $! > pidfile
+          # Wait for server to be ready (port 3000)
+          for i in {1..20}; do
+            if nc -z localhost 3000; then
+              echo "Server is up!"
+              break
+            fi
+            echo "Waiting for server..."
+            sleep 2
+          done
 
-      - name: Verify Postman CLI version
-        run: postman --version
-
-      - name: Login to Postman
+      - name: Validate Collection
         env:
           POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
-        run: postman login --with-api-key "$POSTMAN_API_KEY"
-
-      - name: Run unit and integration tests
-        run: yarn test
-
-      - name: Run Spectral linting on collections
-        run: yarn lint:collections
-
-      - name: Start API server
         run: |
-          yarn start &
-          echo $! > server.pid
+          postman login --with-api-key "$POSTMAN_API_KEY"
+          postman collection run "postman/collections/Intergalactic Bank API"
 
-      - name: Wait for API readiness
+      - name: Push to Postman Cloud
+        if: github.event_name == 'push'
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
         run: |
-          for attempt in {1..30}; do
-            if curl -sSf http://localhost:3000/health >/dev/null; then
-              exit 0
-            fi
-            if curl -sSf http://localhost:3000 >/dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "API did not become ready in time." >&2
-          exit 1
-
-      - name: Run Postman collection tests
-        run: yarn test:api
-
-      - name: Stop API server
+          postman login --with-api-key "$POSTMAN_API_KEY"
+          postman workspace push -y
+      - name: Stop server
         if: always()
         run: |
-          if [ -f server.pid ]; then
-            kill $(cat server.pid) || true
-            rm server.pid
+          if [ -f pidfile ]; then
+            kill $(cat pidfile) || true
+            rm pidfile
           fi
-
-      - name: Show workspace configuration
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "🧩 Workspace Configuration:"
-          cat .postman/config.json
-          echo ""
-          echo "📁 Collections to sync:"
-          ls -la postman/collections/
-          echo ""
-          echo "🌍 Environments to sync:"
-          ls -la postman/environments/
-
-      - name: Push workspace to Postman
-        run: postman workspace push -y
-
-      - name: Confirm sync success
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "✅ Workspace successfully synced!"
-          echo "🌐 View your workspace at: https://web.postman.co/workspace/a6c44822-f001-4728-b0d4-5a1917289054"

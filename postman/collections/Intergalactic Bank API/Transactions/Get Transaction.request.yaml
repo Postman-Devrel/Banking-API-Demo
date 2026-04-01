@@ -1,0 +1,11 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/transactions/:id'
+order: 2000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+pathVariables:
+  - key: id
+    value: ''
+    description: The transaction ID
