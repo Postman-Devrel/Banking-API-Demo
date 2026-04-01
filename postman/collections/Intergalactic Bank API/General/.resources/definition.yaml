@@ -1,0 +1,3 @@
+$kind: collection
+description: General endpoints including welcome, health check, and API key generation.
+order: 1000

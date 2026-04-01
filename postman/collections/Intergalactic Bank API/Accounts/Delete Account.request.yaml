@@ -1,0 +1,11 @@
+$kind: http-request
+method: DELETE
+url: '{{baseUrl}}/api/v1/accounts/:id'
+order: 5000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+pathVariables:
+  - key: id
+    value: ''
+    description: The account ID to soft-delete

@@ -1,0 +1,16 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/accounts'
+order: 1000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+queryParams:
+  - key: owner
+    value: ''
+    description: Filter by account owner name
+    disabled: true
+  - key: createdAt
+    value: ''
+    description: Filter by creation date
+    disabled: true

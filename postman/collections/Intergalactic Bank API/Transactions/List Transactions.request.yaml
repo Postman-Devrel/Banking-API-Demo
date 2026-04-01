@@ -1,0 +1,20 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/transactions'
+order: 1000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+queryParams:
+  - key: fromAccountId
+    value: ''
+    description: Filter by source account ID
+    disabled: true
+  - key: toAccountId
+    value: ''
+    description: Filter by destination account ID
+    disabled: true
+  - key: createdAt
+    value: ''
+    description: Filter by creation date
+    disabled: true

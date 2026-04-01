@@ -1,0 +1,20 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/v1/accounts/:id'
+order: 4000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: id
+    value: ''
+    description: The account ID to update
+body:
+  type: json
+  content: |-
+    {
+      "owner": "Jane Doe",
+      "accountType": "PREMIUM"
+    }

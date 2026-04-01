@@ -1,0 +1,18 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/transactions'
+order: 3000
+headers:
+  - key: x-api-key
+    value: '{{apiKey}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "fromAccountId": "source-account-id",
+      "toAccountId": "destination-account-id",
+      "amount": 500,
+      "currency": "COSMIC_COINS"
+    }

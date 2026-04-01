@@ -1,0 +1,3 @@
+$kind: collection
+description: Endpoints for managing transactions - list, view, and create transfers and deposits.
+order: 3000
