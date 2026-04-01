@@ -38,19 +38,29 @@ jobs:
             sleep 2
           done
 
+      # Local collection run does not require Postman cloud login (see Postman CLI auth docs).
+      # This avoids "invalid API key" when secrets are unavailable (e.g. PRs from forks).
       - name: Validate Collection
-        env:
-          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
         run: |
-          postman login --with-api-key "$POSTMAN_API_KEY"
           postman collection run "postman/collections/Intergalactic Bank API"
 
       - name: Push to Postman Cloud
         if: github.event_name == 'push'
         env:
           POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          # Optional: set repo variable POSTMAN_REGION to `eu` if you use EU data residency
+          POSTMAN_REGION: ${{ vars.POSTMAN_REGION }}
         run: |
-          postman login --with-api-key "$POSTMAN_API_KEY"
+          if [ -z "${POSTMAN_API_KEY}" ]; then
+            echo "::error::POSTMAN_API_KEY is empty. Add it under Settings → Secrets and variables → Actions."
+            echo "Secrets are not passed to workflows for pull_request events opened from repository forks."
+            exit 1
+          fi
+          if [ -n "${POSTMAN_REGION}" ]; then
+            postman login --with-api-key "$POSTMAN_API_KEY" --region "$POSTMAN_REGION"
+          else
+            postman login --with-api-key "$POSTMAN_API_KEY"
+          fi
           postman workspace push -y
       - name: Stop server
         if: always()
