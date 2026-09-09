@@ -199,10 +199,20 @@ describe('Fraud REST API', () => {
     const reset = await fetch(`${baseUrl}/_demo/v1/runs/direct-test/reset`, { method: 'POST', headers: resetHeaders });
     expect(reset.status).toBe(200);
     const body = await json(reset);
-    expect(body).toEqual({ runId: 'direct-test', seedVersion: 'fabric-fraud-v2', assessments: 3, attempts: 0, faults: { failFirstAssessment: false } });
+    expect(body).toEqual({
+      runId: 'direct-test', seedVersion: 'fabric-fraud-v2', assessments: 3, attempts: 0,
+      assessmentIds: ['FRA-55692', 'FRA-76469', 'FRA-81139'], attemptsByTransaction: {},
+      faults: { failFirstAssessment: false }
+    });
     const replay = await fetch(`${baseUrl}/_demo/v1/runs/direct-test/reset`, { method: 'POST', headers: resetHeaders });
     expect(replay.headers.get('idempotency-replayed')).toBe('true');
     expect(await json(replay)).toEqual(body);
+
+    const summary = await fetch(`${baseUrl}/_demo/v1/runs/direct-test/summary`, {
+      headers: headers({ 'x-api-key': 'admin-secret' })
+    });
+    expect(summary.status).toBe(200);
+    expect(await json(summary)).toEqual(body);
   });
 
   it('does not expose demo-control routes in production', async () => {

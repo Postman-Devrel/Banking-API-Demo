@@ -213,6 +213,39 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ConfigureFraudFaultsRequest"
+  /_demo/v1/runs/{runId}/summary:
+    get:
+      tags:
+        - Demo Control
+      operationId: getFraudRunSummary
+      summary: Inspect safe deterministic run evidence
+      description: Inspect safe deterministic run evidence. Available only outside production and requires the demo
+        administrator key.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Inspect safe deterministic run evidence succeeded.
+          headers:
+            X-Request-Id: *a1
+            X-Demo-Run-Id: *a2
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      x-demo-only: true
   /_demo/v1/runs/{runId}/reset:
     post:
       tags:
@@ -498,6 +531,8 @@ components:
         - seedVersion
         - assessments
         - attempts
+        - assessmentIds
+        - attemptsByTransaction
         - faults
       properties:
         runId:
@@ -510,6 +545,16 @@ components:
         attempts:
           type: integer
           minimum: 0
+        assessmentIds:
+          type: array
+          items:
+            type: string
+            pattern: ^FRA-
+        attemptsByTransaction:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 1
         faults:
           type: object
           additionalProperties: false

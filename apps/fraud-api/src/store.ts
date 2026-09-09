@@ -99,6 +99,8 @@ export class FraudStore {
     return {
       runId, seedVersion: fixtures.seedVersions.fraud, assessments: run.assessments.size,
       attempts: [...run.attempts.values()].reduce((total, count) => total + count, 0),
+      assessmentIds: [...run.assessments.keys()].sort(),
+      attemptsByTransaction: Object.fromEntries([...run.attempts.entries()].sort(([left], [right]) => left.localeCompare(right))),
       faults: structuredClone(run.faults)
     };
   }

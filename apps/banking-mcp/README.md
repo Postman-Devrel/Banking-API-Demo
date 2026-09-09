@@ -24,6 +24,8 @@ Development defaults are disabled for credentials when `NODE_ENV=production`.
 
 Authentication happens before request-context validation or downstream access. No request retries occur inside this server; `attempts` is therefore `1`, allowing Gateway-managed retries to remain measurable.
 
+Tool results contain customer-safe structured data only. HTTP status, latency, response size, correlation, and idempotency replay remain in structured server logs; the MCP server does not add custom result `_meta` telemetry to agent-visible calls.
+
 ## Scripts
 
 ```bash

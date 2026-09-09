@@ -50,6 +50,10 @@ describe('run-scoped Fraud storage', () => {
     store.incrementAttempt('run', 'TX');
     expect(store.summary('run')).toMatchObject({ attempts: 1, faults: { failFirstAssessment: true } });
     store.reset('run');
-    expect(store.summary('run')).toEqual({ runId: 'run', seedVersion: 'fabric-fraud-v2', assessments: 3, attempts: 0, faults: { failFirstAssessment: false } });
+    expect(store.summary('run')).toEqual({
+      runId: 'run', seedVersion: 'fabric-fraud-v2', assessments: 3, attempts: 0,
+      assessmentIds: ['FRA-55692', 'FRA-76469', 'FRA-81139'], attemptsByTransaction: {},
+      faults: { failFirstAssessment: false }
+    });
   });
 });

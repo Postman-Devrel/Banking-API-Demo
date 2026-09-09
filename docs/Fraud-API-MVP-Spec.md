@@ -38,6 +38,7 @@ Money is a positive safe integer in minor units. The initial fictional currencie
 | `POST` | `/v1/fraud/assessments` | Business or admin key | Create or retrieve an assessment |
 | `GET` | `/v1/fraud/assessments/{assessmentId}` | Business or admin key | Retrieve a created assessment |
 | `PUT` | `/_demo/v1/runs/{runId}/faults` | Admin key | Configure the local fail-first scenario |
+| `GET` | `/_demo/v1/runs/{runId}/summary` | Admin key | Return safe assessment and per-transaction attempt evidence for orchestration assertions |
 | `POST` | `/_demo/v1/runs/{runId}/reset` | Admin key | Restore a local run to the deterministic seed |
 
 The `/_demo` endpoints are not mounted when `NODE_ENV=production`.

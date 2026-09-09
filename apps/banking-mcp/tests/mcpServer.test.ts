@@ -66,10 +66,10 @@ describe('Banking MCP protocol server', () => {
     });
     expect(called).toMatchObject({
       result: {
-        structuredContent: { accounts: [], page: { limit: 25, nextCursor: null, hasMore: false } },
-        _meta: { 'com.postman.fabric/telemetry': { attempts: 1, requestId: 'banking-1', runId: 'fabric-lane' } }
+        structuredContent: { accounts: [], page: { limit: 25, nextCursor: null, hasMore: false } }
       }
     });
+    expect((called as { result: Record<string, unknown> }).result).not.toHaveProperty('_meta');
     expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({ tool: 'banking_list_accounts', ok: true, attempts: 1 }));
     await harness.clientTransport.close();
   });

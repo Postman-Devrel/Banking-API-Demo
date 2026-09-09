@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "node -e \"require('./openapi')\"",
-    "test": "node -e \"const o=require('./operations'); if(o.length!==6||new Set(o.map(x=>x.operationId)).size!==6) process.exit(1)\"",
+    "test": "node -e \"const o=require('./operations'); if(o.length!==7||new Set(o.map(x=>x.operationId)).size!==7) process.exit(1)\"",
     "verify": "npm run build && npm test"
   },
   "engines": { "node": ">=20.0.0" }

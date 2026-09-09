@@ -56,6 +56,8 @@ The first valid assessment attempt in that run returns `429` with `Retry-After: 
 
 Reset a run with `POST /_demo/v1/runs/{runId}/reset`, also using the administrator key and an idempotency key. Reset restores the three seeded assessments and clears attempts, faults, and previous idempotency state.
 
+The orchestration server can collect non-model-facing retry evidence with `GET /_demo/v1/runs/{runId}/summary` and the administrator key. The response contains the configured fault, sorted assessment IDs, total attempts, and per-transaction attempt counts. It contains no credential material. Like the other demo controls, this route is not mounted in production.
+
 ## Verification
 
 ```bash

@@ -69,10 +69,14 @@ module.exports = {
     }
   },
   RunSummary: {
-    type: 'object', additionalProperties: false, required: ['runId', 'seedVersion', 'assessments', 'attempts', 'faults'],
+    type: 'object', additionalProperties: false, required: ['runId', 'seedVersion', 'assessments', 'attempts', 'assessmentIds', 'attemptsByTransaction', 'faults'],
     properties: {
       runId: { type: 'string' }, seedVersion: { const: 'fabric-fraud-v2' },
       assessments: { type: 'integer', minimum: 0 }, attempts: { type: 'integer', minimum: 0 },
+      assessmentIds: { type: 'array', items: { type: 'string', pattern: '^FRA-' } },
+      attemptsByTransaction: {
+        type: 'object', additionalProperties: { type: 'integer', minimum: 1 }
+      },
       faults: {
         type: 'object', additionalProperties: false, required: ['failFirstAssessment'],
         properties: { failFirstAssessment: { type: 'boolean' } }

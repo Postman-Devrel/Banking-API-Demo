@@ -128,6 +128,15 @@ export function createApp(config: FraudConfig, dependencies: { store?: FraudStor
   });
 
   if (config.nodeEnv !== 'production') {
+    app.get('/_demo/v1/runs/:runId/summary', auth, requireAdmin, (req, res, next) => {
+      try {
+        const runId = pathParameter(req, 'runId');
+        if (!RUN_ID_PATTERN.test(runId)) throw new ApiError(400, 'VALIDATION_ERROR', 'runId has an invalid format');
+        req.runId = runId;
+        res.set('X-Demo-Run-Id', runId).json(store.summary(runId));
+      } catch (error) { next(error); }
+    });
+
     app.put('/_demo/v1/runs/:runId/faults', auth, requireAdmin, requireIdempotencyKey, validateBody('configureFaults'), (req, res, next) => {
       try {
         const runId = pathParameter(req, 'runId');
@@ -154,6 +163,8 @@ export function createApp(config: FraudConfig, dependencies: { store?: FraudStor
         if (replayIfPresent(req, res, store, runId, 'resetFraudRun', idemValue)) return;
         reserve(req, store, runId, 'resetFraudRun', idemValue);
         store.reset(runId);
+        // Reset replaces the run (including its idempotency map), so reserve the
+        // control request again before recording its replayable response.
         reserve(req, store, runId, 'resetFraudRun', idemValue);
         const body = store.summary(runId);
         complete(req, store, runId, 'resetFraudRun', idemValue, { status: 200, body, headers: {} });

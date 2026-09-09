@@ -59,7 +59,6 @@ export function createBankingMcpServer(
       },
       async (args, context): Promise<CallToolResult> => {
         const result = await client.execute(tool.operation, args, scope, context.mcpReq.id);
-        const meta = { 'com.postman.fabric/telemetry': result.telemetry };
         logger.info({
           event: 'banking_mcp_tool_call',
           tool: tool.name,
@@ -71,14 +70,12 @@ export function createBankingMcpServer(
           return {
             isError: true,
             content: [{ type: 'text', text: `${result.error.code}: ${result.error.message}` }],
-            structuredContent: { error: result.error },
-            _meta: meta
+            structuredContent: { error: result.error }
           };
         }
         return {
           content: [{ type: 'text', text: `${tool.operation.summary} succeeded (HTTP ${result.telemetry.httpStatus}).` }],
-          structuredContent: result.data,
-          _meta: meta
+          structuredContent: result.data
         };
       }
     );

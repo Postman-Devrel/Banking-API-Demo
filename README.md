@@ -65,9 +65,9 @@ The server exposes 50 customer-safe tools across accounts, transactions, custome
 
 Administrative credential creation, demo reset, dispute status administration, service health, OpenAPI download, and legacy credential creation stay REST-only. In particular, the model cannot supply credentials, idempotency keys, or run identifiers as tool arguments.
 
-Every result includes concise text plus structured JSON. The Support MCP keeps operational telemetry in server logs rather than adding custom result `_meta`; this avoids using agent context for data already captured by Fabric Gateway. Both direct MCP servers intentionally perform one downstream attempt, so Gateway-managed retries remain visible in the comparison.
+Every result includes concise text plus structured JSON. Both Banking and Support MCP keep operational telemetry in server logs rather than adding custom result `_meta`; this avoids using agent context for data already captured by Fabric Gateway. Both direct MCP servers intentionally perform one downstream attempt, so Gateway-managed retries remain visible in the comparison.
 
-The Fraud API remains REST-only so the comparison can demonstrate a mixed MCP and API task. It uses `fraud-demo-key` for business calls and a separate `fraud-admin-demo-key` for local fault/reset controls. See [Fraud API documentation](apps/fraud-api/README.md) and the [revised Fraud MVP specification](docs/Fraud-API-MVP-Spec.md).
+The Fraud API remains REST-only so the comparison can demonstrate a mixed MCP and API task. It uses `fraud-demo-key` for business calls and a separate `fraud-admin-demo-key` for local fault, reset, and safe run-summary controls. See [Fraud API documentation](apps/fraud-api/README.md) and the [revised Fraud MVP specification](docs/Fraud-API-MVP-Spec.md).
 
 The Support API contains 62 operations; its MCP publishes 53 contract-selected investigation tools. Its canonical `CASE-2042` fixture is linked to Banking transaction `TX-1042` and begins without Fraud evidence so the agent must perform the investigation. See [Support API documentation](apps/support-api/README.md), [Support MCP documentation](apps/support-mcp/README.md), the [Support API specification](docs/Support-API-Spec.md), and the [Demo Seed Catalogue](docs/Demo-Seed-Catalog.md).
 
