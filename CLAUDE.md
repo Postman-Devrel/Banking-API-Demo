@@ -1,342 +1,263 @@
-# Intergalactic Bank API
+# Intergalactic Banking Platform
 
-## Overview
+## Purpose
 
-REST API for managing bank accounts and financial transactions with multi-currency support (COSMIC_COINS, GALAXY_GOLD, MOON_BUCKS). Demonstrates professional Node.js/Express patterns with authentication, rate limiting, and comprehensive error handling.
+This repository is the service monorepo for the Postman Fabric Gateway comparison showcase. It contains deterministic Banking, Fraud, and Support services plus customer-safe MCP facades for Banking and Support.
 
-Entry point: `src/server.js:1`
+The comparison has two connection topologies:
 
-## Tech Stack
+- **Direct:** an agent connects to Banking MCP, Support MCP, and Fraud REST separately.
+- **Fabric:** the same business capabilities are exposed through Postman Fabric Gateway, potentially using fewer curated, merged, or progressively disclosed tools.
 
-**Runtime & Framework:**
+Business parity matters; identical tool names or catalogue sizes do not.
 
-- Node.js with Express 4.18.2
-- ES2021 JavaScript with ES modules
+## Runtime and repository layout
 
-**Core Dependencies:**
+- Node.js 20 or newer
+- npm workspaces
+- Banking API: CommonJS JavaScript, Express 5
+- Banking MCP: TypeScript, Streamable HTTP MCP
+- Fraud API: TypeScript ESM, Express 5
+- Support API: TypeScript ESM, Express 5
+- Support MCP: TypeScript, Streamable HTTP MCP
+- In-memory, deterministic, run-scoped storage
 
-- `express` - REST API framework
-- `cors` - CORS middleware
-- `dotenv` - Environment configuration
-- `uuid` - ID generation
-
-**Development:**
-
-- `jest` + `supertest` - Testing with coverage
-- `eslint` - Code linting
-- `nodemon` - Auto-reload
-- `husky` + `lint-staged` - Git hooks
-
-**Data Storage:**
-
-- In-memory Map-based storage (database-replaceable design)
-
-## Project Structure
-
-```
-src/
-├── server.js           # Entry point, middleware setup
-├── database/
-│   └── db.js          # Singleton database instance
-├── models/
-│   ├── Account.js     # Account domain model with validation
-│   └── Transaction.js # Transaction domain model
-├── routes/
-│   ├── accounts.js    # Account CRUD endpoints
-│   ├── transactions.js # Transaction processing
-│   └── admin.js       # API key generation
-└── middleware/
-    ├── auth.js        # API key validation, admin check
-    ├── errorHandler.js # Global error handler
-    └── rateLimit.js   # Rate limiter (300 req/min)
-
-tests/
-├── unit/              # Model & middleware tests
-└── integration/       # API endpoint tests
-
-openapi/
-└── openapi.yaml      # API specification
+```text
+apps/
+  banking-api/       56-operation Banking REST API
+  banking-mcp/       50-tool Banking MCP facade
+  fraud-api/         Fraud REST API and controlled retry behavior
+  support-api/       62-operation Support REST API
+  support-mcp/       53-tool Support MCP facade
+packages/
+  demo-fixtures/     Canonical cross-service fixtures and integrity checks
+  banking-contract/  Banking operations, schemas, and OpenAPI generation
+  fraud-contract/    Fraud operations, schemas, and OpenAPI generation
+  support-contract/  Support operations, schemas, and OpenAPI generation
 ```
 
-## Essential Commands
+Read the root `README.md` and the relevant application README before changing a service. See `.claude/docs/architectural_patterns.md` for implementation conventions.
 
-**Development:**
+## Source-of-truth order
+
+When documentation and implementation disagree, use this order:
+
+1. shared contract operation metadata and JSON Schemas;
+2. current service source code;
+3. automated tests;
+4. generated OpenAPI;
+5. README and specification prose;
+6. legacy documents.
+
+Do not restore behavior from an older plan or document without confirming it against the current implementation.
+
+## Essential commands
+
+From the repository root:
 
 ```bash
-npm run dev          # Start with auto-reload
-npm start            # Production start
+npm install
+npm run dev
+npm run build
+npm run typecheck
+npm run lint
+npm run test
+npm run verify
 ```
 
-**Testing:**
+`npm run dev` starts:
+
+| Service | Address |
+|---|---|
+| Banking API | `http://127.0.0.1:3000` |
+| Banking MCP | `http://127.0.0.1:3100/mcp` |
+| Fraud API | `http://127.0.0.1:8080` |
+| Support API | `http://127.0.0.1:8090` |
+| Support MCP | `http://127.0.0.1:3200/mcp` |
+
+Individual scripts are `start:api`, `start:mcp`, `start:fraud`, `start:support`, `start:support-mcp` and their corresponding `dev:*` forms.
+
+Use workspace commands while iterating:
 
 ```bash
-npm test             # Run all tests with coverage
-npm run test:unit    # Unit tests only
-npm run test:integration # Integration tests only
-npm run test:watch   # Watch mode
+npm run verify --workspace=@intergalactic/banking-api
+npm run verify --workspace=@intergalactic/banking-mcp
+npm run verify --workspace=@intergalactic/fraud-api
+npm run verify --workspace=@intergalactic/support-api
+npm run verify --workspace=@intergalactic/support-mcp
 ```
 
-**Code Quality:**
+Run the root `npm run verify` before handing off a cross-service or contract change.
 
-```bash
-npm run lint         # Check code style
-npm run lint:fix     # Auto-fix issues
-```
+## Authentication
 
-**Environment Setup:**
+Local development credentials are intentionally separate:
 
-```bash
-cp .env.example .env # Create environment file
-# Configure PORT (default 3000)
-```
+| Boundary | Credential |
+|---|---|
+| Banking customer REST | `1234` |
+| Banking administrator REST | `admin-demo-key` |
+| Agent to Banking MCP | `banking-mcp-demo-key` |
+| Fraud business REST | `fraud-demo-key` |
+| Fraud demo administrator | `fraud-admin-demo-key` |
+| Support agent REST | `support-demo-key` |
+| Support administrator REST | `support-admin-demo-key` |
+| Agent to Support MCP | `support-mcp-demo-key` |
 
-## Key Features
+REST APIs use `X-API-Key`. MCP servers use `Authorization: Bearer <key>` canonically and also accept `X-API-Key` for API-key-oriented clients.
 
-- **Authentication:** API key-based via `x-api-key` header (src/middleware/auth.js:12)
-- **Rate Limiting:** 300 requests/minute per key (src/middleware/rateLimit.js:6)
-- **Endpoints:**
-  - `POST /admin/generate-key` - Generate API keys (admin only)
-  - `GET|POST|PUT|DELETE /accounts` - Account management
-  - `POST /transactions/transfer` - Transfer funds
-  - `POST /transactions/deposit` - Deposit funds
-  - `GET /transactions` - Query transactions
+MCP inbound credentials must differ from downstream REST credentials. MCP servers inject downstream credentials privately. Never expose credentials in tool definitions, tool arguments, tool results, DTOs, audit records, idempotency scopes, or logs.
 
-## Architecture
+Development defaults must not be usable silently in production.
 
-This codebase follows a layered REST architecture with middleware composition. Key patterns include:
+## Request context and run isolation
 
-- Route handlers contain business logic with validation
-- Models provide data validation and domain methods
-- Middleware handles cross-cutting concerns (auth, errors, rate limiting)
-- Database layer abstracts data persistence
-- Standard error responses across all endpoints
+Protected requests use:
 
-## Response Formats
+- `X-API-Key` or MCP bearer authentication;
+- optional `X-Demo-Run-Id`, matching `[A-Za-z0-9_-]{1,64}`;
+- optional `X-Request-Id` for correlation;
+- `Idempotency-Key` on every maintained mutation.
 
-**Success:** `{ resource: data }`
-**Error:** `{ error: { name, message } }`
+Each authenticated run receives an independent deterministic copy of the canonical fixture. Invalid credentials must be rejected before a run is allocated. Runs have capacity and idle-expiry controls.
 
-HTTP Status Codes:
+Equivalent Direct and Fabric action sequences must produce identical business IDs, timestamps, ordering, pagination, and response bodies. Do not introduce wall-clock time, random IDs, unordered collection traversal, or shared mutable state into domain behavior.
 
-- `200` - Success
-- `400` - Validation error
-- `401` - Authentication required
-- `403` - Insufficient permissions
-- `404` - Resource not found
-- `429` - Rate limit exceeded
-- `500` - Server error
+## Canonical scenario and fixtures
 
-## Additional Documentation
+Shared fixtures are maintained in `@intergalactic/demo-fixtures`.
 
-For deeper technical details, see:
+The primary live scenario is:
 
-- `.claude/docs/architectural_patterns.md` - Design patterns, conventions, and architectural decisions used throughout the codebase
+- customer `CUS-1001`, Nova Newman;
+- support case `CASE-2042`;
+- Banking transaction `TX-1042`;
+- `3,750 COSMIC_COINS` sent to Gary Galaxy;
+- web channel, untrusted device, Europa Station;
+- no Banking dispute initially;
+- no Fraud assessment initially;
+- creating the assessment yields `FRA-90142`, score 82, high risk, `REQUIRE_CUSTOMER_VERIFICATION`;
+- Support initially contains the customer statement but not the Banking evidence, Fraud evidence, identity verification, or investigation summary.
 
-## Postman Collection Management
+Current seeds are `fabric-banking-v2`, `fabric-fraud-v2`, and `fabric-support-v2`. Update `packages/demo-fixtures`, `docs/Demo-Seed-Catalog.md`, service seed builders, and integrity tests together whenever shared facts change.
 
-**IMPORTANT:** Whenever API endpoints are added, modified, or deleted, the Postman collection MUST be updated to maintain synchronization between implementation and documentation.
+## Contract-driven development
 
-### When to Update Collections
+Each service contract package owns:
 
-After implementing endpoint changes, **ALWAYS ask the user** if they want to update the Postman collection before proceeding. Never update automatically without confirmation.
+- canonical operation metadata;
+- request and response JSON Schemas;
+- security and header declarations;
+- operation IDs and tags;
+- OpenAPI generation;
+- MCP-safety selection where applicable.
 
-Example prompt:
+Runtime validators and MCP catalogues reuse those definitions. Never hand-edit generated `openapi/openapi.yaml` files.
 
-```
-I've completed the endpoint implementation. Would you like me to update the Postman collection
-to reflect these changes?
-```
+For a contract change:
 
-### Collection Update Workflow
+1. change shared schemas and operation metadata;
+2. update service behavior;
+3. update MCP mapping if the operation is model-safe;
+4. regenerate OpenAPI;
+5. add request, response, authorization, idempotency, and protocol tests;
+6. run the affected workspace verification and root verification.
 
-Follow this exact workflow when updating Postman collections:
+Preserve operation IDs unless correcting an established contract defect. Tool names are derived from operation IDs.
 
-**Step 1: Get Workspace Information**
+## Banking domain rules
 
-- Ask user for workspace name (not ID initially)
-- Use `mcp__postman__getWorkspaces` to search for workspaces
-- Display matching workspaces and ask user to confirm the correct one
-- If workspace name provided doesn't match, ask for clarification
+- API keys resolve to principals: `principalId`, `role`, and optional `customerId`.
+- Money uses non-negative safe integers in minor units; current fictional currencies use exponent `0`.
+- Transactions are immutable ledger entries.
+- Transfers validate ownership, both active accounts, currency, and funds before committing balances and ledger atomically.
+- A transaction is visible to the owner of either participating account.
+- Only the source-account owner may dispute an outgoing transaction.
+- Customers may create and inspect disputes and attach evidence; administrators own dispute status transitions.
+- Beneficiaries use `PENDING_VERIFICATION`, `TRUSTED`, and `INACTIVE`; customers cannot self-assign trust.
+- Card transitions are `ACTIVE -> FROZEN`, `FROZEN -> ACTIVE`, and `ACTIVE|FROZEN -> REPLACED`; no operations follow replacement.
+- Scheduled payments require a future time.
+- Standing orders require a trusted beneficiary, frequency, and next execution time.
+- Direct debits require merchant and mandate details.
+- `DELETE` routes perform audited cancellation or deactivation, not destructive history removal.
+- Audit events are append-only and use `actorPrincipalId`, never credential material.
 
-**Step 2: Get Collection Information**
+Route handlers should validate and delegate. Domain decisions belong in explicit services, persistence in domain repositories, and output shaping in public DTO mappers. Do not add generic CRUD, mass assignment, or direct mutation of repository map values.
 
-- Once workspace is confirmed, use `mcp__postman__getCollections` with the workspace ID
-- Display available collections in that workspace
-- Ask user to confirm which collection to update
-- If collection name is ambiguous, show details and ask for confirmation
+## Pagination
 
-**Step 3: Read and Validate Current Collection**
+All collections use stable cursor pagination:
 
-- Use `mcp__postman__getCollection` with `model: "full"` parameter to retrieve complete collection data
-- Review current structure, requests, and organization
-- Identify which requests need to be added, updated, or removed
-- Validate against the API implementation (check routes in `src/routes/` directory)
+- `limit` defaults to 25 and is capped at 100;
+- omit `cursor` on the first page;
+- copy the opaque `nextCursor` unchanged for the next page;
+- return `{ limit, nextCursor, hasMore }` page metadata.
 
-**Step 4: Prepare Updated Collection**
+Never document a placeholder such as `cursor=string` as a usable value.
 
-- Start with current collection structure
-- **CRITICAL: Flatten all folders** - Extract all requests from nested folders to root level
-- Remove all `item` entries that are folders (only keep request items)
-- Update/add/remove requests as needed
-- Ensure each request includes:
-  - Correct HTTP method
-  - Full URL with path parameters
-  - Request headers (including `x-api-key` for auth)
-  - Request body with examples
-  - Response examples
-- Maintain collection-level auth, variables, and scripts
-
-**Step 5: Update Collection**
-
-- **NEVER use `mcp__postman__updateCollectionRequest`** - it is too limited
-- **ALWAYS use `mcp__postman__putCollection`** instead
-- Pass the complete collection object with all required fields
-- Include collection ID in the request
-- Ensure `info` object has required `name` and `schema` properties
-
-**Step 6: Verify Update**
-
-- Read the collection again using `mcp__postman__getCollection`
-- Confirm changes were applied correctly
-- Report success to user with summary of changes
-
-### Critical Rules for Collection Updates
-
-1. **No Folders Allowed**
-
-   - Collections MUST be flat (no nested folders or item groups)
-   - If reading a collection with folders, automatically flatten it
-   - Extract all requests from folders and place at root `item` array
-   - Do not warn user - just flatten automatically
-
-2. **Always Use putCollection**
-
-   - `mcp__postman__updateCollectionRequest` cannot update: request body, URL, auth, headers, method
-   - It's essentially useless for real updates
-   - Always use `mcp__postman__putCollection` for ANY collection modification
-
-3. **Preserve Collection IDs**
-
-   - When updating, retain all existing IDs: `id`, `uid`, `_postman_id`
-   - If IDs are missing, the API will generate new ones (breaking references)
-   - Read collection first to get current IDs, then update with same IDs
-
-4. **Collection Format Requirements**
-
-   ```javascript
-   {
-     collection: {
-       info: {
-         name: "Collection Name",
-         schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-         description: "Optional description"
-       },
-       item: [
-         // Array of request objects ONLY (no folders)
-         {
-           name: "Request Name",
-           request: {
-             method: "GET|POST|PUT|DELETE",
-             header: [...],
-             url: {...},
-             body: {...}  // for POST/PUT
-           },
-           response: []
-         }
-       ],
-       auth: {...},      // Optional collection-level auth
-       variable: [...],  // Optional collection variables
-       event: [...]      // Optional pre-request/test scripts
-     }
-   }
-   ```
-
-5. **Request Structure**
-   Each request must include:
-
-   - `name` - Clear, descriptive name
-   - `request.method` - HTTP method
-   - `request.url` - Can be string or object with `raw`, `host`, `path`, `query`
-   - `request.header` - Array of header objects with `key`, `value`
-   - `request.body` (for POST/PUT) - Object with `mode` and content
-   - `response` - Array of example responses (can be empty)
-
-6. **Authentication**
-
-   - Set collection-level auth if all requests use same auth
-   - For this API: use `apikey` type with `x-api-key` header
-   - Individual requests can override collection auth
-
-7. **Variables**
-   - Use collection variables for: `baseUrl`, `apiKey`
-   - Format: `{ key: "varName", value: "default value", type: "string" }`
-
-### Example Postman Update Flow
-
-```
-User: "Update the Postman collection with the new endpoints"
-
-Assistant: "Which workspace should I update? Please provide the workspace name."
-
-User: "My Team Workspace"
-
-Assistant:
-1. Call mcp__postman__getWorkspaces
-2. Search results for matching name
-3. Confirm: "Found workspace: My Team Workspace (ID: abc123). Is this correct?"
-
-User: "Yes"
-
-Assistant:
-4. Call mcp__postman__getCollections with workspace ID
-5. Display: "Found these collections: 1) Banking API Collection, 2) Test Collection"
-6. Ask: "Which collection should I update?"
-
-User: "Banking API Collection"
-
-Assistant:
-7. Call mcp__postman__getCollection with model: "full"
-8. Review collection structure and identify folders
-9. Flatten folders - extract all requests to root level
-10. Read src/routes/accounts.js to see implemented endpoints
-11. Add new GET /accounts/:id, PUT /accounts/:id, DELETE /accounts/:id requests
-12. Update existing GET /accounts and POST /accounts requests if needed
-13. Call mcp__postman__putCollection with updated collection
-14. Verify by reading collection again
-15. Report: "Collection updated successfully. Added 3 new endpoints, updated 2 existing endpoints."
-```
-
-### Common Pitfalls to Avoid
-
-- **DO NOT** use updateCollectionRequest - always use putCollection
-- **DO NOT** leave folders in collection - always flatten
-- **DO NOT** forget to preserve IDs when updating
-- **DO NOT** skip reading collection before updating
-- **DO NOT** forget to validate against actual routes in codebase
-- **DO NOT** update collection without asking user first
-- **DO NOT** guess workspace/collection IDs - always search and confirm
-
-### Validation Checklist
-
-Before calling putCollection, verify:
-
-- [ ] All folders flattened (item array contains only requests, no folders)
-- [ ] All IDs preserved from original collection
-- [ ] All new endpoints from codebase included
-- [ ] Request URLs match route definitions in src/routes/
-- [ ] HTTP methods correct (GET/POST/PUT/DELETE)
-- [ ] Request bodies included for POST/PUT requests
-- [ ] x-api-key header included in all requests
-- [ ] Collection-level auth configured
-- [ ] Variables defined (baseUrl, apiKey)
-- [ ] info.name and info.schema present
-
-## Development Notes
-
-- Pre-commit hooks enforce linting and tests
-- All routes require authentication except admin key generation
-- Database uses singleton pattern with in-memory storage
-- Models implement `validate()`, `toJSON()`, and domain-specific methods
-- Error handling is centralized in middleware/errorHandler.js:7
-- Account ownership is tracked via API key - users can only access their own accounts
-- Soft delete is used for accounts (deleted flag) to preserve transaction history
+## Idempotency
+
+Idempotency is scoped by run, authenticated principal, operation ID, path parameters, normalized query, recursively canonicalized body, and key.
+
+Records transition from `IN_PROGRESS` to `COMPLETED`. Exact replays return the original sanitized status, headers, and body with `Idempotency-Replayed: true`. Payload conflicts and concurrent duplicates return `409`. Apply TTL and per-run capacity cleanup.
+
+MCP tools must not accept an idempotency key. Derive it from the MCP request ID, operation, and canonical arguments. A replay must not advance deterministic clocks or counters.
+
+## MCP conventions
+
+Banking and Support MCP servers are stateless Streamable HTTP facades generated from their canonical contracts.
+
+- Banking exposes 50 customer-safe tools.
+- Support exposes 53 investigation-safe tools marked `x-mcp-safe: true`.
+- Health, OpenAPI, credential creation, reset, and administrator-only transitions remain REST-only.
+- Tool arguments contain business inputs only.
+- Results contain concise text plus structured JSON.
+- Do not add custom telemetry `_meta` to tool results.
+- Keep HTTP status, latency, response size, request ID, replay state, and attempt count in structured logs.
+- Each direct MCP server performs exactly one downstream attempt and must not retry.
+
+The single-attempt rule preserves the comparison boundary: a Direct agent may see an upstream failure, while Fabric Gateway may retry below the model boundary.
+
+## Fraud retry behavior
+
+Fraud is intentionally REST-only. Its non-production administrator controls can enable a deterministic fail-first assessment:
+
+1. first valid assessment attempt returns `429` with `Retry-After: 1`;
+2. second equivalent attempt succeeds;
+3. the Fraud API never retries itself.
+
+`GET /_demo/v1/runs/{runId}/summary` provides safe, non-model-facing attempt evidence. Fault, summary, and reset routes require `fraud-admin-demo-key` locally and must not be mounted in production.
+
+## Security and public responses
+
+- Authenticate before allocating runs or parsing privileged context.
+- Use explicit public DTO mappers rather than blacklist redaction.
+- Repository methods return safe copies, not mutable map references.
+- Use writable-field allowlists for every command.
+- Raw generated API keys are returned once only from credential-creation endpoints.
+- Preserve defense-in-depth credential scanning in tests.
+- Never put raw Fraud scores, private Support notes, or credential data into customer-facing responses.
+
+## Testing expectations
+
+Tests should cover more than happy paths. For every mutation, cover validation, authorization, illegal transitions, exact replay, conflicting replay, and concurrent duplicate behavior. For financial operations, cover atomic rollback, inactive accounts, insufficient funds, ownership, and concurrency.
+
+Contract tests must verify runtime responses against declared OpenAPI schemas. MCP tests must verify authentication, tool catalogue generation, argument validation, downstream headers, no hidden retry, structured results, and secret non-disclosure.
+
+Preserve Direct/Fabric determinism tests and cross-service fixture integrity tests.
+
+## Documentation rules
+
+- OpenAPI is the sole maintained external API contract; no Postman collection update is required by default.
+- Keep root and application READMEs aligned with implemented behavior.
+- Keep `docs/Demo-Seed-Catalog.md` aligned with all seed changes.
+- Keep demo controls clearly marked non-production and non-model-facing.
+- Document operational metadata as internal where it is not meaningful to API consumers.
+
+## Working safely
+
+- Preserve unrelated user changes in a dirty worktree.
+- Do not replace deterministic in-memory behavior with a database unless explicitly requested.
+- Do not create commits unless explicitly requested.
+- Do not broaden an MCP catalogue merely because a REST operation exists; model safety is an explicit contract decision.
+- Avoid compatibility shims that bypass authorization, validation, idempotency, or domain transitions.

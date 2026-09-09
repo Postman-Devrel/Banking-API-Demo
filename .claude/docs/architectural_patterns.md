@@ -1,438 +1,324 @@
-# Architectural Patterns & Design Decisions
+# Architectural Patterns and Decisions
 
-This document describes recurring patterns, conventions, and architectural decisions used throughout the codebase.
+This document describes the architecture currently implemented in the Intergalactic Banking Platform monorepo. It replaces the original single-service CRUD description.
 
-## Core Architecture Pattern
+## 1. System boundaries
 
-**Layered REST API with Middleware Pipeline**
+The monorepo contains three business domains and two MCP facades:
 
-Request flow:
-```
-Request → CORS → Body Parser → Rate Limiter → Request Logger →
-Auth Middleware → Route Handler → Error Handler → Response
-```
-
-See: `src/server.js:23-38` for middleware setup
-
----
-
-## Pattern 1: Model Design Pattern
-
-Models serve as data validators and domain objects with three core responsibilities:
-
-**Structure:**
-```javascript
-class ModelName {
-  constructor(data) { /* initialize properties */ }
-  static validate(data) { /* return { isValid, error } */ }
-  toJSON() { /* return serializable object */ }
-  // Domain-specific methods
-}
+```text
+Banking MCP -> Banking API -> Banking run store
+Support MCP -> Support API -> Support run store
+Orchestrator/API client -> Fraud API -> Fraud run store
 ```
 
-**Implementation Examples:**
-- `src/models/Account.js:1-88` - Account model with balance operations
-- `src/models/Transaction.js:1-73` - Transaction model with status validation
+Banking is the financial source of truth. Fraud is an advisory risk engine. Support owns customer case workflow. Cross-domain identifiers are coordinated by shared fixtures, but services do not reach into one another's stores.
 
-**Key Conventions:**
-1. Constructor accepts plain object, assigns properties
-2. Static `validate()` returns `{ isValid: boolean, error?: string }`
-3. `toJSON()` method for API serialization
-4. Domain methods (e.g., `hasSufficientFunds()`, `updateBalance()`)
-5. Immutable properties (use getters, no setters)
+## 2. Contract-first architecture
 
----
+The contract packages are the central design boundary:
 
-## Pattern 2: Route Handler Structure
-
-All route handlers follow this consistent pattern:
-
-```javascript
-router.method('/path', validateApiKey, async (req, res) => {
-  try {
-    // 1. Extract and validate input
-    const validation = Model.validate(data);
-    if (!validation.isValid) {
-      return res.status(400).json({
-        error: { name: 'validationError', message: validation.error }
-      });
-    }
-
-    // 2. Business logic
-    const result = await database.operation();
-
-    // 3. Success response
-    res.status(200).json({ resource: result.toJSON() });
-
-  } catch (error) {
-    // 4. Error handling
-    res.status(500).json({
-      error: { name: 'serverError', message: 'Descriptive message' }
-    });
-  }
-});
+```text
+canonical operation metadata + JSON Schemas
+                  |
+       +----------+----------+
+       |          |          |
+ runtime Ajv   OpenAPI 3.1   MCP catalogue
+ validation    generation    generation
 ```
 
-**Locations:**
-- `src/routes/accounts.js:17-42` - POST /accounts example
-- `src/routes/transactions.js:12-88` - POST /transactions/transfer example
-- `src/routes/admin.js:10-23` - POST /admin/generate-key example
+An operation definition includes its method, path, operation ID, tags, security, input schemas, response schemas, and whether it is MCP-safe. This removes duplicated route/tool descriptions.
 
-**Key Conventions:**
-1. Always wrap in try-catch
-2. Validate early, return early on errors
-3. Use appropriate HTTP status codes
-4. Consistent error response format
-5. Return serialized data with `toJSON()`
+Generated OpenAPI is an artifact. Change the contract package and regenerate; do not edit YAML by hand.
 
----
+## 3. Request pipeline
 
-## Pattern 3: Middleware Composition
+The precise middleware composition differs by service, but protected requests follow this conceptual pipeline:
 
-Middleware functions are composable and applied per-route:
-
-**Authentication Middleware:**
-```javascript
-// Applied to all protected routes
-router.get('/', validateApiKey, handler);
-router.post('/', validateApiKey, requireAdmin, handler);
+```text
+request
+  -> correlation/run context validation
+  -> authentication and principal resolution
+  -> rate limiting
+  -> request-schema validation
+  -> idempotency reservation for mutations
+  -> route/controller
+  -> domain service
+  -> repository/run store
+  -> public DTO mapping
+  -> response-schema validation in tests
+  -> structured logging/error mapping
 ```
 
-See: `src/middleware/auth.js:12-40` for implementation
+Authentication must occur before an unknown run can be allocated. Cross-cutting middleware should not contain business-domain transitions.
 
-**Middleware Types:**
-1. **Global** - Applied to all routes (CORS, body parser, error handler)
-2. **Selective** - Applied per-route (auth, admin check)
-3. **Factory** - Class methods returning middleware (rate limiter)
+## 4. Run-scoped stores
 
-**Locations:**
-- `src/server.js:23-28` - Global middleware setup
-- `src/middleware/auth.js:12` - `validateApiKey` middleware
-- `src/middleware/auth.js:28` - `requireAdmin` middleware
-- `src/middleware/rateLimit.js:24` - Factory pattern `.middleware()`
+Each service uses a top-level run registry. A run is selected by `X-Demo-Run-Id`, defaults to `default`, and is seeded only after successful authentication.
 
----
+A run owns:
 
-## Pattern 4: Standardized Error Responses
+- domain maps and indexes;
+- deterministic counters;
+- a deterministic clock;
+- credentials/principals where applicable;
+- idempotency reservations;
+- attempt and fault state where applicable;
+- last-access time for idle expiration.
 
-All endpoints use consistent error response format:
+Run stores enforce maximum run count and idle cleanup. Domain repositories must not expose their mutable maps. Return structured clones or explicit copies.
 
-```javascript
+The store is intentionally in memory. Restarting a service discards mutations. This is a feature of the repeatable local demo, not production persistence.
+
+## 5. Deterministic identity and time
+
+IDs and timestamps derive from per-run fixture state, counters, and the demo clock. Domain code must not use random UUIDs or the wall clock for business records.
+
+This property is required for fair comparison: separate Direct and Fabric namespaces executing the same logical commands should produce the same business outputs.
+
+Idempotent replay must return the stored result without incrementing a counter or advancing the demo clock.
+
+## 6. Identity and authorization
+
+Banking credentials resolve to a principal:
+
+```text
+principalId
+role: CUSTOMER | ADMIN
+customerId?: string
+```
+
+Credential values are SHA-256 hashed in storage. Domain records and audit events carry `principalId`, never an API key. API-key generation returns raw key material once, then only retains the hash.
+
+Authorization belongs at the command/query boundary and must be repeated when a resource changes:
+
+- list and get queries apply visibility rules;
+- commands verify ownership of referenced resources;
+- updates revalidate funding accounts, beneficiaries, amounts, currencies, and lifecycle states;
+- only administrators perform privileged transitions.
+
+## 7. Explicit services instead of generic CRUD
+
+The Banking API uses domain-specific services for customers, beneficiaries, cards, scheduled payments, standing orders, direct debits, transactions/statements, FX, notifications, disputes, and audit.
+
+Route handlers should:
+
+1. read validated request data;
+2. call one explicit service operation;
+3. map the result into a declared public response.
+
+Services enforce business rules and coordinate repositories. Repositories persist and retrieve safe copies. DTO mappers define exactly which fields leave the service.
+
+Do not use generic object-spread updates from request bodies. Every command has a writable-field allowlist.
+
+## 8. Financial transaction boundary
+
+Transfers are one atomic domain operation:
+
+```text
+validate source exists and is active
+  -> validate destination exists and is active
+  -> authorize source ownership
+  -> validate currencies and amount
+  -> validate sufficient funds
+  -> calculate both resulting balances
+  -> commit both balances and immutable ledger entry together
+```
+
+No balance may change if any validation or commit step fails. Ledger entries are immutable. Deactivation never removes transaction history.
+
+Money is stored as non-negative safe integers in minor units. Fictional currencies currently use exponent `0`. FX uses rational rates and an explicit deterministic rounding policy.
+
+## 9. Lifecycle state machines
+
+State transitions are commands, not arbitrary field updates.
+
+### Cards
+
+```text
+ACTIVE -> FROZEN
+FROZEN -> ACTIVE
+ACTIVE | FROZEN -> REPLACED
+REPLACED -> no further transition
+```
+
+### Beneficiaries
+
+```text
+PENDING_VERIFICATION -> TRUSTED   administrator-controlled
+PENDING_VERIFICATION | TRUSTED -> INACTIVE
+```
+
+Customers cannot self-assign trust.
+
+### Payments
+
+- scheduled payments require a future execution time;
+- standing orders require a trusted beneficiary, frequency, and next execution time;
+- direct debits require merchant and mandate details;
+- update commands revalidate all referenced resources and lifecycle rules;
+- delete paths translate into cancellation or deactivation events.
+
+### Disputes
+
+Customers may create disputes, inspect them, and attach evidence. Only administrators may transition dispute status. Ledger transactions remain unchanged by dispute workflow.
+
+### Support cases
+
+Support separates investigation, evidence, verification, escalation, assignment, tasks, and final lifecycle actions. Final resolution/closure and verification completion remain administrator-controlled and outside the MCP catalogue.
+
+## 10. Idempotency reservation pattern
+
+Every maintained mutation uses a shared reservation flow:
+
+```text
+canonical identity =
+  run + principal + operationId + path + normalized query + canonical body + key
+
+lookup key
+  -> absent: reserve IN_PROGRESS
+  -> same identity, IN_PROGRESS: 409
+  -> different identity: 409
+  -> same identity, COMPLETED: replay stored response
+
+execute operation
+  -> store sanitized status, selected headers, and body as COMPLETED
+  -> release or retain retryable state according to failure semantics
+```
+
+Canonical JSON must recursively sort object keys. Array order remains meaningful. Reservations have TTL and per-run capacity.
+
+## 11. Stable cursor pagination
+
+Collections use deterministic ordering before pagination. Cursors are opaque encodings of stable position, not arbitrary client strings.
+
+Response metadata is:
+
+```json
 {
-  error: {
-    name: string,      // Error type identifier
-    message: string,   // Human-readable message
-    stack?: string     // Stack trace (development only)
-  }
+  "limit": 25,
+  "nextCursor": "opaque-or-null",
+  "hasMore": false
 }
 ```
 
-**Error Types & Status Codes:**
-- `validationError` (400) - Invalid input data
-- `authenticationError` (401) - Missing/invalid API key
-- `authorizationError` (403) - Insufficient permissions
-- `notFoundError` (404) - Resource not found
-- `rateLimitError` (429) - Too many requests
-- `serverError` (500) - Internal server error
+The first request omits `cursor`; subsequent requests reuse `nextCursor` verbatim. Filters and sort order must be stable for the cursor sequence.
 
-**Implementation:**
-- `src/middleware/errorHandler.js:7-21` - Global error handler
-- Individual route handlers for specific errors
+## 12. Public DTO pattern
 
-**Success Response Format:**
-```javascript
-{
-  [resourceName]: data  // e.g., { account: {...} }
-}
+Responses use explicit mapping functions rather than serializing domain maps or redacting a blacklist after the fact.
+
+DTOs must exclude:
+
+- raw or hashed credentials;
+- credential-shaped ownership fields;
+- internal repository state;
+- private audit implementation details;
+- any field absent from the declared public response schema.
+
+Secret scanning remains defense in depth, not the primary output-control mechanism.
+
+## 13. MCP facade pattern
+
+Banking MCP and Support MCP share the same architecture:
+
+```text
+Streamable HTTP request
+  -> authenticate MCP credential
+  -> validate run/request context
+  -> tools/list from canonical contract
+  -> validate tool arguments
+  -> inject downstream REST credential and headers
+  -> derive idempotency for mutations
+  -> make exactly one REST attempt
+  -> map REST success/error to concise text + structuredContent
+  -> log operational telemetry outside the result
 ```
 
----
+MCP tool arguments contain only business inputs. The model cannot set credentials, run IDs, correlation IDs, or idempotency keys.
 
-## Pattern 5: Singleton Database Pattern
+Tool names derive from operation IDs:
 
-Database is exported as a singleton instance to ensure shared state:
+- `banking_<snake_case_operation_id>`;
+- `support_<snake_case_operation_id>`.
 
-```javascript
-// Database class with private constructor pattern
-class Database {
-  constructor() {
-    this.accounts = new Map();
-    this.transactions = new Map();
-    this.apiKeys = new Map();
-  }
-  // CRUD methods
-}
+Downstream output schemas are retained for validation/evidence but are not enlarged with custom telemetry. Do not add result `_meta` for status, latency, bytes, retries, correlation, or replay; the gateway and orchestrator collect those signals independently.
 
-// Export single instance
-export default new Database();
-```
+## 14. Retry ownership boundary
 
-See: `src/database/db.js:3-150`
+Direct MCP facades and the Fraud API never retry business calls. This is deliberate.
 
-**Usage:**
-```javascript
-import database from '../database/db.js';
-const account = database.getAccount(id);
-```
+The controlled Fraud fault returns a first `429` and a subsequent success. Therefore:
 
-**Key Points:**
-1. Single source of truth for data
-2. Map-based storage for O(1) lookups
-3. Methods return null for not-found (not throwing)
-4. Designed for easy database replacement (MongoDB, PostgreSQL)
-
----
-
-## Pattern 6: Filter Object Pattern
-
-Query parameters are transformed into filter objects for database queries:
-
-```javascript
-// Extract filters from query params
-const filters = {};
-if (req.query.owner) filters.owner = req.query.owner;
-if (req.query.currency) filters.currency = req.query.currency;
-if (req.query.createdAt) filters.createdAt = req.query.createdAt;
-
-// Apply filters in database method
-const results = database.getAccounts(filters);
-```
+- Direct: one Fraud attempt reaches the model as an error; the agent may request one retry.
+- Fabric: the gateway may make two upstream attempts while returning one success to the model.
 
-**Locations:**
-- `src/routes/accounts.js:53-58` - Account filtering
-- `src/routes/transactions.js:96-104` - Transaction filtering
-- `src/database/db.js:46-59` - Filter application
+Do not add SDK or server retries that blur this boundary. Transport retries, if any, must be explicit, narrowly scoped, and separately observable.
 
-**Benefits:**
-- Flexible, optional query parameters
-- Type-safe filtering in database layer
-- Easy to extend with new filter criteria
-
----
-
-## Pattern 7: Rate Limiting with Class-Based Design
-
-Rate limiter uses class with internal state and factory method:
-
-```javascript
-class RateLimiter {
-  constructor(maxRequests, windowMs) {
-    this.requests = new Map(); // apiKey -> { count, resetTime }
-  }
-
-  middleware() {
-    return (req, res, next) => {
-      // Rate limiting logic
-    };
-  }
-}
+## 15. Append-only audit pattern
 
-// Create and export middleware instance
-const limiter = new RateLimiter(300, 60000);
-export default limiter.middleware();
-```
+Audit events are ordered, append-only records. They identify the actor by `actorPrincipalId` and describe the domain operation without embedding credentials. Pagination preserves deterministic order.
 
-See: `src/middleware/rateLimit.js:6-41`
+Lifecycle cancellation, deactivation, evidence attachment, and privileged transitions should create appropriate audit/timeline records rather than rewriting history invisibly.
 
-**Features:**
-- Per-API-key rate limiting
-- Sliding window implementation
-- Automatic cleanup of expired entries
-- Configurable limits and windows
-
----
-
-## Pattern 8: UUID Generation with Truncation
-
-IDs are generated using truncated UUIDs for readability:
+## 16. Error contract
 
-```javascript
-import { v4 as uuidv4 } from 'uuid';
+Validation, authentication, authorization, not-found, conflict, rate-limit, and server failures must map to declared error schemas. Correlation IDs are included where the contract declares them.
 
-const accountId = uuidv4().split('-')[0];  // e.g., "a1b2c3d4"
-```
-
-**Locations:**
-- `src/routes/accounts.js:29` - Account ID generation
-- `src/routes/transactions.js:36` - Transaction ID generation
-- `src/routes/admin.js:18` - API key generation
-
-**Trade-offs:**
-- Shorter IDs (8 chars vs 36)
-- Still globally unique in practice
-- More user-friendly for testing/debugging
-- Collision risk extremely low for demo purposes
+Rate-limit responses include `Retry-After`. Banking also returns its declared `X-RateLimit-*` headers. Never leak stack traces or secrets through public errors.
 
----
+## 17. Adding or changing an operation
 
-## Pattern 9: Model Serialization
+1. Determine the owning domain and whether the capability is REST-only or MCP-safe.
+2. Add or change reusable JSON Schemas in the relevant contract package.
+3. Add canonical operation metadata, including exact security, headers, responses, examples, tags, and operation ID.
+4. Implement an explicit service command/query and repository methods returning copies.
+5. Keep the route thin and apply common middleware.
+6. Add explicit DTO mapping.
+7. If MCP-safe, verify generated tool name, input schema, annotations, and downstream mapping.
+8. Regenerate OpenAPI and verify the generated tree is clean.
+9. Test success, validation, authorization, state transitions, idempotency replay/conflict/concurrency, response conformance, and secret non-disclosure.
+10. Run the affected workspace verification and root `npm run verify`.
 
-Models control their own serialization via `toJSON()`:
+## 18. Adding or changing fixture data
 
-```javascript
-class Account {
-  toJSON() {
-    return {
-      id: this.id,
-      owner: this.owner,
-      balance: this.balance,
-      currency: this.currency,
-      createdAt: this.createdAt
-    };
-  }
-}
-```
+1. Change canonical facts in `packages/demo-fixtures`.
+2. Update each owning service's seed builder.
+3. Preserve referential integrity across Banking transaction, Fraud assessment, and Support case/evidence records.
+4. Update `docs/Demo-Seed-Catalog.md`.
+5. Test reset restoration and Direct/Fabric determinism.
+6. Ensure the primary `CASE-2042` scenario still starts in the intended incomplete state unless the scenario itself is being redesigned.
 
-**Used in:**
-- `src/models/Account.js:70-78`
-- `src/models/Transaction.js:55-64`
+## 19. Test architecture
 
-**Benefits:**
-- Consistent API responses
-- Hide internal properties
-- Control over serialization logic
-- Works with JSON.stringify() and res.json()
+The verification suite combines:
 
----
+- schema and contract generation-stability tests;
+- OpenAPI linting and response conformance;
+- unit tests for domain and cross-cutting behavior;
+- full operation-matrix integration tests;
+- MCP protocol, authentication, catalogue, and mapping tests;
+- idempotency replay/conflict/concurrent-duplicate tests;
+- run isolation and expiry tests;
+- deterministic parity tests;
+- fault and retry-boundary tests;
+- credential non-disclosure tests;
+- cross-service fixture integrity checks;
+- configured coverage thresholds.
 
-## Pattern 10: Validation Before Persistence
+Avoid tests that reach into mutable repository maps when a public command/query can establish behavior. Use deterministic run IDs per test and reset or isolate state explicitly.
 
-All data is validated before database operations:
+## 20. Patterns to avoid
 
-```javascript
-// Always validate first
-const validation = Account.validate(accountData);
-if (!validation.isValid) {
-  return res.status(400).json({ error: {...} });
-}
-
-// Then create and persist
-const account = new Account(accountData);
-const created = database.createAccount(account);
-```
-
-**Locations:**
-- `src/routes/accounts.js:24-27` - Account creation
-- `src/routes/transactions.js:28-31` - Transaction creation
-
-**Validation Rules:**
-- Required fields check
-- Type validation
-- Business rule validation (e.g., positive amounts)
-- Returns descriptive error messages
-
----
-
-## Architectural Decisions
-
-### Why In-Memory Storage?
-
-Decision: Use Map-based in-memory storage instead of a database.
-
-**Rationale:**
-- Educational/demo purpose
-- Zero setup requirements
-- Fast iteration during development
-- Database-agnostic API design for easy replacement
-
-**Migration Path:**
-Database class methods are designed to match typical ORM patterns:
-```javascript
-database.getAccount(id) → db.accounts.findOne({ _id: id })
-database.createAccount(account) → db.accounts.insertOne(account)
-```
-
-See: `src/database/db.js:1-150`
-
-### Why API Key Authentication?
-
-Decision: Simple API key in header vs JWT/OAuth.
-
-**Rationale:**
-- Stateless authentication
-- Simple to implement and test
-- Suitable for API-to-API communication
-- Admin role flag stored with key
-- Rate limiting per key
-
-See: `src/middleware/auth.js:12-40`
-
-### Why Route-Level Business Logic?
-
-Decision: Business logic in route handlers vs service layer.
-
-**Rationale:**
-- Small codebase (< 500 lines total)
-- Clear request-response flow
-- Easy to understand for educational purposes
-- Models handle domain logic
-- Can refactor to services if complexity grows
-
-**When to Refactor:**
-If handlers exceed ~50 lines or logic is duplicated, extract to service layer.
-
-### Why Global Error Handler?
-
-Decision: Centralized error handling vs try-catch everywhere.
-
-**Rationale:**
-- Consistent error responses
-- Automatic stack traces in development
-- Catches unhandled promise rejections
-- Single point for error logging/monitoring
-- Reduces boilerplate in routes
-
-See: `src/middleware/errorHandler.js:7-21`
-
----
-
-## Testing Conventions
-
-**Unit Tests:**
-- Test models in isolation (validation, methods)
-- Test middleware in isolation (mocked req/res)
-- Use descriptive test names: "should reject negative amounts"
-- Group related tests in describe blocks
-
-Locations:
-- `tests/unit/models/Account.test.js`
-- `tests/unit/middleware/auth.test.js`
-
-**Integration Tests:**
-- Test full request-response cycle
-- Use supertest for HTTP assertions
-- Test happy path and error cases
-- Set up/tear down database state
-
-Location:
-- `tests/integration/`
-
----
-
-## Extending the Codebase
-
-### Adding New Endpoints
-
-1. Create route handler in `src/routes/`
-2. Implement validation in models if needed
-3. Add database methods in `src/database/db.js`
-4. Apply middleware (auth, rate limiting)
-5. Add tests in `tests/`
-6. Update OpenAPI spec in `openapi/openapi.yaml`
-
-### Adding New Middleware
-
-1. Create in `src/middleware/`
-2. Export middleware function(s)
-3. Register in `src/server.js` (global or per-route)
-4. Add unit tests
-5. Document error responses if applicable
-
-### Replacing In-Memory Storage
-
-1. Create database client in `src/database/`
-2. Update Database class methods to use client
-3. Maintain same method signatures
-4. Add connection management
-5. Update tests with database fixtures
-6. Add migration scripts if needed
+- hand-edited generated OpenAPI;
+- route-level business logic duplicated across endpoints;
+- generic CRUD services or mass assignment;
+- API keys used as ownership identifiers;
+- mutable repository objects escaping their boundary;
+- random domain IDs or wall-clock timestamps;
+- retries hidden in Direct MCP or Fraud clients;
+- administrative operations marked MCP-safe;
+- operational telemetry in agent-visible `_meta`;
+- hard deletion of financial or audit history;
+- cursor examples that imply the literal value `string` is valid;
+- a Postman collection treated as more authoritative than OpenAPI.
