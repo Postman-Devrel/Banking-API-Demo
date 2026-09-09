@@ -1,0 +1,16 @@
+{
+  "name": "@intergalactic/demo-fixtures",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Canonical cross-service seed scenarios for the Fabric Gateway showcase",
+  "type": "commonjs",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": { ".": { "types": "./index.d.ts", "default": "./index.js" } },
+  "scripts": {
+    "build": "node -e \"require('./index')\"",
+    "test": "node test.js",
+    "verify": "npm run build && npm test"
+  },
+  "engines": { "node": ">=20.0.0" }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@intergalactic/support-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Authenticated MCP facade for the Intergalactic Support API",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "tsc -p tsconfig.test.json",
+    "catalog:stats": "node --import tsx scripts/catalogStats.ts",
+    "test": "vitest run --coverage",
+    "verify": "npm run typecheck && npm test && npm run catalog:stats && npm run build"
+  },
+  "engines": { "node": ">=20.0.0" },
+  "dependencies": {
+    "@intergalactic/support-contract": "1.0.0",
+    "@modelcontextprotocol/express": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "express": "^5.1.0",
+    "json-canonicalize": "^1.2.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "tsx": "4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "5.0.0"
+  }
+}

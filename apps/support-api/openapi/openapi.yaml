@@ -1,0 +1,5048 @@
+openapi: 3.1.0
+info:
+  title: Intergalactic Support API
+  version: 1.0.0
+  description: Deterministic, run-scoped support case management for the Postman Fabric Gateway comparison.
+  contact:
+    name: Postman Fabric Gateway Demo Maintainers
+  license:
+    name: ISC
+servers:
+  - url: http://127.0.0.1:8090
+    description: Local deterministic demo service
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: System
+    description: Service health and contract discovery.
+  - name: Cases
+    description: Case search, retrieval, and safe case commands.
+  - name: Notes
+    description: Append-only customer statements and investigation notes.
+  - name: Evidence
+    description: Immutable, typed evidence snapshots with provenance.
+  - name: Verification
+    description: Customer-verification request tracking.
+  - name: Escalations
+    description: Specialist escalation records and routing.
+  - name: Lifecycle
+    description: Administrator-restricted resolution and closure.
+  - name: Assignments
+    description: Queue discovery, claiming, transfer, and release.
+  - name: Tasks
+    description: Investigation task tracking.
+  - name: Related Cases
+    description: Duplicate discovery and explicit case relationships.
+  - name: Interactions
+    description: Recorded customer-contact history; these operations do not send messages.
+  - name: Knowledge
+    description: Searchable seeded support guidance and case links.
+  - name: SLA
+    description: Deterministic service-level policies and risk.
+  - name: Classification
+    description: Controlled tags and deterministic classification.
+  - name: Guidance
+    description: Policy-derived next actions, missing evidence, summaries, and checklists.
+  - name: Administration
+    description: Credential and local demo controls.
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      operationId: getSupportHealth
+      summary: Check Support API health
+      description: Check Support API health. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Check Support API health succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      x-mcp-safe: false
+      security: []
+  /openapi.yaml:
+    get:
+      tags:
+        - System
+      operationId: getSupportOpenApi
+      summary: Download the maintained OpenAPI contract
+      description: Download the maintained OpenAPI contract. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Download the maintained OpenAPI contract succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/yaml:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      x-mcp-safe: false
+      security: []
+  /v1/cases:
+    get:
+      tags:
+        - Cases
+      operationId: listCases
+      summary: Search support cases
+      description: Search support cases. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: transactionId
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: customerId
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - OPEN
+              - INVESTIGATING
+              - AWAITING_CUSTOMER
+              - ESCALATED
+              - RESOLVED
+              - CLOSED
+        - name: priority
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - LOW
+              - MEDIUM
+              - HIGH
+              - CRITICAL
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - UNRECOGNIZED_TRANSACTION
+              - PAYMENT_DELAY
+              - ACCOUNT_ACCESS
+              - CARD_ISSUE
+              - OTHER
+        - name: assignedQueueId
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Search support cases succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Cases
+      operationId: createCase
+      summary: Create a support case
+      description: Create a support case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a support case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCaseRequest"
+            example:
+              customerId: CUS-1001
+              transactionId: TX-1042
+              subject: Unrecognized transfer to Gary Galaxy
+              description: The customer does not recognize this transfer.
+              category: UNRECOGNIZED_TRANSACTION
+              channel: PHONE
+              priority: HIGH
+              tags:
+                - disputed-transfer
+  /v1/cases/{caseId}:
+    get:
+      tags:
+        - Cases
+      operationId: getCase
+      summary: Get a support case
+      description: Get a support case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get a support case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    patch:
+      tags:
+        - Cases
+      operationId: updateCase
+      summary: Update mutable case details
+      description: Update mutable case details. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update mutable case details succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCaseRequest"
+  /v1/cases/{caseId}/timeline:
+    get:
+      tags:
+        - Cases
+      operationId: getCaseTimeline
+      summary: Get the ordered case timeline
+      description: Get the ordered case timeline. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Get the ordered case timeline succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/start-investigation:
+    post:
+      tags:
+        - Cases
+      operationId: startCaseInvestigation
+      summary: Start investigating a case
+      description: Start investigating a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Start investigating a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/cases/{caseId}/notes:
+    get:
+      tags:
+        - Notes
+      operationId: listCaseNotes
+      summary: List case notes
+      description: List case notes. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List case notes succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Notes
+      operationId: addCaseNote
+      summary: Add a case note
+      description: Add a case note. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Add a case note succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteRequest"
+  /v1/cases/{caseId}/notes/{noteId}:
+    get:
+      tags:
+        - Notes
+      operationId: getCaseNote
+      summary: Get a case note
+      description: Get a case note. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get a case note succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/evidence:
+    get:
+      tags:
+        - Evidence
+      operationId: listCaseEvidence
+      summary: List case evidence
+      description: List case evidence. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List case evidence succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Evidence
+      operationId: attachCaseEvidence
+      summary: Attach immutable evidence
+      description: Attach immutable evidence. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Attach immutable evidence succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evidence"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEvidenceRequest"
+            example:
+              type: FRAUD_ASSESSMENT
+              referenceId: FRA-90142
+              source: fraud-api
+              summary: Deterministic fraud assessment for TX-1042.
+              facts:
+                assessmentId: FRA-90142
+                riskScore: 82
+                riskLevel: high
+                recommendation: REQUIRE_CUSTOMER_VERIFICATION
+  /v1/cases/{caseId}/evidence/{evidenceId}:
+    get:
+      tags:
+        - Evidence
+      operationId: getCaseEvidence
+      summary: Get case evidence
+      description: Get case evidence. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: evidenceId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get case evidence succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evidence"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/verification-requests:
+    get:
+      tags:
+        - Verification
+      operationId: listVerificationRequests
+      summary: List customer verification requests
+      description: List customer verification requests. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List customer verification requests succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Verification
+      operationId: requestCustomerVerification
+      summary: Record a customer verification request
+      description: Record a customer verification request. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Record a customer verification request succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVerificationRequest"
+            example:
+              method: IDENTITY_CHECK
+              reason: The fraud assessment requires customer verification.
+  /v1/cases/{caseId}/verification-requests/{verificationId}/complete:
+    post:
+      tags:
+        - Verification
+      operationId: completeVerificationRequest
+      summary: Complete a customer verification request
+      description: Complete a customer verification request. The authenticated principal and selected demo run are supplied by the server. Requires the Support administrator role.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: verificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Complete a customer verification request succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteVerificationRequest"
+  /v1/cases/{caseId}/escalations:
+    get:
+      tags:
+        - Escalations
+      operationId: listCaseEscalations
+      summary: List case escalations
+      description: List case escalations. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List case escalations succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EscalationCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Escalations
+      operationId: escalateCase
+      summary: Escalate a case
+      description: Escalate a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Escalate a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escalation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEscalationRequest"
+            example:
+              target: FRAUD_TEAM
+              reason: High-risk evidence requires specialist review.
+              evidenceIds:
+                - EVD-3001
+                - EVD-3002
+  /v1/cases/{caseId}/resolve:
+    post:
+      tags:
+        - Lifecycle
+      operationId: resolveCase
+      summary: Resolve a support case
+      description: Resolve a support case. The authenticated principal and selected demo run are supplied by the server. Requires the Support administrator role.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Resolve a support case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveCaseRequest"
+  /v1/cases/{caseId}/close:
+    post:
+      tags:
+        - Lifecycle
+      operationId: closeCase
+      summary: Close a resolved case
+      description: Close a resolved case. The authenticated principal and selected demo run are supplied by the server. Requires the Support administrator role.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Close a resolved case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/cases/{caseId}/reopen:
+    post:
+      tags:
+        - Lifecycle
+      operationId: reopenCase
+      summary: Reopen a closed case
+      description: Reopen a closed case. The authenticated principal and selected demo run are supplied by the server. Requires the Support administrator role.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Reopen a closed case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/queues:
+    get:
+      tags:
+        - Assignments
+      operationId: listSupportQueues
+      summary: List support queues
+      description: List support queues. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List support queues succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/queues/{queueId}:
+    get:
+      tags:
+        - Assignments
+      operationId: getSupportQueue
+      summary: Get a support queue
+      description: Get a support queue. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get a support queue succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/assignment:
+    get:
+      tags:
+        - Assignments
+      operationId: getCaseAssignment
+      summary: Get case assignment
+      description: Get case assignment. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get case assignment succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/claim:
+    post:
+      tags:
+        - Assignments
+      operationId: claimCase
+      summary: Claim a case
+      description: Claim a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Claim a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/cases/{caseId}/transfer:
+    post:
+      tags:
+        - Assignments
+      operationId: transferCase
+      summary: Transfer a case to another queue
+      description: Transfer a case to another queue. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Transfer a case to another queue succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferCaseRequest"
+  /v1/cases/{caseId}/release:
+    post:
+      tags:
+        - Assignments
+      operationId: releaseCase
+      summary: Release a claimed case
+      description: Release a claimed case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Release a claimed case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/cases/{caseId}/tasks:
+    get:
+      tags:
+        - Tasks
+      operationId: listCaseTasks
+      summary: List investigation tasks
+      description: List investigation tasks. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List investigation tasks succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Tasks
+      operationId: createCaseTask
+      summary: Create an investigation task
+      description: Create an investigation task. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create an investigation task succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+  /v1/cases/{caseId}/tasks/{taskId}:
+    get:
+      tags:
+        - Tasks
+      operationId: getCaseTask
+      summary: Get an investigation task
+      description: Get an investigation task. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get an investigation task succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    patch:
+      tags:
+        - Tasks
+      operationId: updateCaseTask
+      summary: Update an investigation task
+      description: Update an investigation task. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update an investigation task succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskRequest"
+  /v1/cases/{caseId}/tasks/{taskId}/complete:
+    post:
+      tags:
+        - Tasks
+      operationId: completeCaseTask
+      summary: Complete an investigation task
+      description: Complete an investigation task. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Complete an investigation task succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/cases/{caseId}/tasks/{taskId}/cancel:
+    post:
+      tags:
+        - Tasks
+      operationId: cancelCaseTask
+      summary: Cancel an investigation task
+      description: Cancel an investigation task. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Cancel an investigation task succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+  /v1/cases/{caseId}/related-cases:
+    get:
+      tags:
+        - Related Cases
+      operationId: listRelatedCases
+      summary: List related-case links
+      description: List related-case links. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List related-case links succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelatedCaseCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Related Cases
+      operationId: linkRelatedCase
+      summary: Link a related case
+      description: Link a related case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Link a related case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelatedCaseLink"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkCaseRequest"
+  /v1/cases/{caseId}/duplicate-candidates:
+    get:
+      tags:
+        - Related Cases
+      operationId: findDuplicateCases
+      summary: Find deterministic duplicate candidates
+      description: Find deterministic duplicate candidates. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Find deterministic duplicate candidates succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/related-cases/{relatedCaseId}:
+    delete:
+      tags:
+        - Related Cases
+      operationId: unlinkRelatedCase
+      summary: Remove a related-case link
+      description: Remove a related-case link. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: relatedCaseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Remove a related-case link succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemovalResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/interactions:
+    get:
+      tags:
+        - Interactions
+      operationId: listCaseInteractions
+      summary: List case interactions
+      description: List case interactions. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List case interactions succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InteractionCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Interactions
+      operationId: recordCaseInteraction
+      summary: Record a customer interaction
+      description: Record a customer interaction. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Record a customer interaction succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Interaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInteractionRequest"
+  /v1/cases/{caseId}/interactions/{interactionId}:
+    get:
+      tags:
+        - Interactions
+      operationId: getCaseInteraction
+      summary: Get a customer interaction
+      description: Get a customer interaction. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: interactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get a customer interaction succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Interaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/customers/{customerId}/interactions:
+    get:
+      tags:
+        - Interactions
+      operationId: listCustomerInteractions
+      summary: List customer interactions
+      description: List customer interactions. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List customer interactions succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InteractionCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/customers/{customerId}/cases:
+    get:
+      tags:
+        - Interactions
+      operationId: listCustomerCases
+      summary: List customer support cases
+      description: List customer support cases. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List customer support cases succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/knowledge/articles:
+    get:
+      tags:
+        - Knowledge
+      operationId: searchKnowledgeArticles
+      summary: Search knowledge articles
+      description: Search knowledge articles. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+      responses:
+        "200":
+          description: Search knowledge articles succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/knowledge/articles/{articleId}:
+    get:
+      tags:
+        - Knowledge
+      operationId: getKnowledgeArticle
+      summary: Get a knowledge article
+      description: Get a knowledge article. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: articleId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get a knowledge article succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/recommended-articles:
+    get:
+      tags:
+        - Knowledge
+      operationId: recommendArticlesForCase
+      summary: Recommend articles for a case
+      description: Recommend articles for a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Recommend articles for a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/knowledge-links:
+    get:
+      tags:
+        - Knowledge
+      operationId: listLinkedArticles
+      summary: List linked knowledge articles
+      description: List linked knowledge articles. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List linked knowledge articles succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeLinkCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+    post:
+      tags:
+        - Knowledge
+      operationId: linkKnowledgeArticle
+      summary: Link a knowledge article to a case
+      description: Link a knowledge article to a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Link a knowledge article to a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeLink"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkArticleRequest"
+  /v1/cases/{caseId}/sla:
+    get:
+      tags:
+        - SLA
+      operationId: getCaseSla
+      summary: Get the current case SLA
+      description: Get the current case SLA. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get the current case SLA succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseSla"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/sla-policies:
+    get:
+      tags:
+        - SLA
+      operationId: listSlaPolicies
+      summary: List SLA policies
+      description: List SLA policies. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List SLA policies succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaPolicyCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/sla-policies/{policyId}:
+    get:
+      tags:
+        - SLA
+      operationId: getSlaPolicy
+      summary: Get an SLA policy
+      description: Get an SLA policy. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get an SLA policy succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaPolicy"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/sla-risk:
+    get:
+      tags:
+        - SLA
+      operationId: assessCaseSlaRisk
+      summary: Assess deterministic SLA breach risk
+      description: Assess deterministic SLA breach risk. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Assess deterministic SLA breach risk succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaRisk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/tags:
+    get:
+      tags:
+        - Classification
+      operationId: listSupportTags
+      summary: List supported case tags
+      description: List supported case tags. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List supported case tags succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/tags:
+    post:
+      tags:
+        - Classification
+      operationId: addCaseTag
+      summary: Add a tag to a case
+      description: Add a tag to a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Add a tag to a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagRequest"
+  /v1/cases/{caseId}/tags/{tag}:
+    delete:
+      tags:
+        - Classification
+      operationId: removeCaseTag
+      summary: Remove a tag from a case
+      description: Remove a tag from a case. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - name: tag
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Remove a tag from a case succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/classify:
+    post:
+      tags:
+        - Classification
+      operationId: classifyCase
+      summary: Apply deterministic case classification
+      description: Apply deterministic case classification. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Apply deterministic case classification succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Classification"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/available-actions:
+    get:
+      tags:
+        - Guidance
+      operationId: listAvailableCaseActions
+      summary: List currently permitted case actions
+      description: List currently permitted case actions. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: List currently permitted case actions succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailableActions"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/missing-evidence:
+    get:
+      tags:
+        - Guidance
+      operationId: listMissingCaseEvidence
+      summary: List missing investigation evidence
+      description: List missing investigation evidence. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: List missing investigation evidence succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissingEvidence"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/investigation-summary:
+    get:
+      tags:
+        - Guidance
+      operationId: getInvestigationSummary
+      summary: Get an investigation summary
+      description: Get an investigation summary. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get an investigation summary succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvestigationSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/cases/{caseId}/checklist:
+    get:
+      tags:
+        - Guidance
+      operationId: getCaseChecklist
+      summary: Get the deterministic investigation checklist
+      description: Get the deterministic investigation checklist. The authenticated principal and selected demo run are supplied by the server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Get the deterministic investigation checklist succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checklist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: true
+  /v1/admin/api-keys:
+    post:
+      tags:
+        - Administration
+      operationId: createSupportApiKey
+      summary: Create a Support API credential
+      description: Create a Support API credential. The authenticated principal and selected demo run are supplied by the server. Requires the Support administrator role.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a Support API credential succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Credential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+  /_demo/v1/runs/{runId}/reset:
+    post:
+      tags:
+        - Administration
+      operationId: resetSupportRun
+      summary: Reset a deterministic Support run
+      description: Reset a deterministic Support run. The authenticated principal and selected demo run are supplied by the server. Requires the Support administrator role.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Reset a deterministic Support run succeeded.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id:
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-mcp-safe: false
+      x-demo-only: true
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Support agent or administrator credential.
+  parameters:
+    DemoRunId:
+      name: X-Demo-Run-Id
+      in: header
+      required: false
+      description: Isolates Direct and Fabric state.
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{1,64}$
+        default: default
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Correlation identifier; generated when omitted.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Required for mutations. Exact replay returns the original response.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+  headers:
+    X-Request-Id:
+      description: Request correlation identifier.
+      schema:
+        type: string
+    X-Demo-Run-Id:
+      description: Selected demo run.
+      schema:
+        type: string
+    Idempotency-Replayed:
+      description: True when the original response was replayed.
+      schema:
+        type: string
+        const: "true"
+    Retry-After:
+      description: Whole seconds before retrying.
+      schema:
+        type: integer
+        minimum: 1
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          const: ok
+        service:
+          const: support-api
+        version:
+          const: 1.0.0
+    Case:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - customerId
+        - transactionId
+        - subject
+        - description
+        - category
+        - channel
+        - status
+        - priority
+        - tags
+        - assignedQueueId
+        - assignedPrincipalId
+        - verificationStatus
+        - resolution
+        - createdAt
+        - updatedAt
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        customerId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        transactionId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        subject:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum:
+            - UNRECOGNIZED_TRANSACTION
+            - PAYMENT_DELAY
+            - ACCOUNT_ACCESS
+            - CARD_ISSUE
+            - OTHER
+        channel:
+          type: string
+          enum:
+            - PHONE
+            - EMAIL
+            - CHAT
+            - IN_APP
+            - API
+        status:
+          type: string
+          enum:
+            - OPEN
+            - INVESTIGATING
+            - AWAITING_CUSTOMER
+            - ESCALATED
+            - RESOLVED
+            - CLOSED
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        tags:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        assignedQueueId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        assignedPrincipalId:
+          type:
+            - string
+            - "null"
+        verificationStatus:
+          type: string
+          enum:
+            - NOT_REQUESTED
+            - PENDING
+            - PASSED
+            - FAILED
+            - EXPIRED
+            - CANCELLED
+        resolution:
+          anyOf:
+            - type: "null"
+            - type: object
+              additionalProperties: false
+              required:
+                - code
+                - summary
+                - resolvedAt
+              properties:
+                code:
+                  type: string
+                summary:
+                  type: string
+                resolvedAt:
+                  type: string
+                  format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        caseId: CASE-2042
+        customerId: CUS-1001
+        transactionId: TX-1042
+        subject: Unrecognized transfer to Gary Galaxy
+        description: The customer reports that they do not recognize the transfer to Gary Galaxy.
+        category: UNRECOGNIZED_TRANSACTION
+        channel: PHONE
+        status: OPEN
+        priority: HIGH
+        tags:
+          - disputed-transfer
+        assignedQueueId: QUEUE-PAYMENTS
+        assignedPrincipalId: null
+        verificationStatus: NOT_REQUESTED
+        resolution: null
+        createdAt: 2026-09-08T13:42:17.000Z
+        updatedAt: 2026-09-08T13:42:17.000Z
+    Note:
+      type: object
+      additionalProperties: false
+      required:
+        - noteId
+        - caseId
+        - type
+        - content
+        - actorPrincipalId
+        - createdAt
+      properties:
+        noteId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        type:
+          type: string
+          enum:
+            - INTERNAL_NOTE
+            - CUSTOMER_STATEMENT
+            - INVESTIGATION_SUMMARY
+        content:
+          type: string
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+    Evidence:
+      type: object
+      additionalProperties: false
+      required:
+        - evidenceId
+        - caseId
+        - type
+        - referenceId
+        - source
+        - summary
+        - facts
+        - actorPrincipalId
+        - createdAt
+      properties:
+        evidenceId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        type:
+          type: string
+        referenceId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        source:
+          type: string
+        summary:
+          type: string
+        facts:
+          type: object
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+    VerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - verificationId
+        - caseId
+        - method
+        - reason
+        - status
+        - requestedByPrincipalId
+        - requestedAt
+        - completedAt
+        - completionNotes
+      properties:
+        verificationId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        method:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum:
+            - PENDING
+            - PASSED
+            - FAILED
+            - EXPIRED
+            - CANCELLED
+        requestedByPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        completionNotes:
+          type:
+            - string
+            - "null"
+    Escalation:
+      type: object
+      additionalProperties: false
+      required:
+        - escalationId
+        - caseId
+        - target
+        - reason
+        - evidenceIds
+        - status
+        - actorPrincipalId
+        - createdAt
+      properties:
+        escalationId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        target:
+          type: string
+        reason:
+          type: string
+        evidenceIds:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        status:
+          const: OPEN
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+    Queue:
+      type: object
+      additionalProperties: false
+      required:
+        - queueId
+        - name
+        - description
+        - active
+        - skills
+      properties:
+        queueId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        name:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+        skills:
+          type: array
+          items:
+            type: string
+    Assignment:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - queueId
+        - principalId
+        - claimedAt
+        - updatedAt
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        queueId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        principalId:
+          type:
+            - string
+            - "null"
+        claimedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Task:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - caseId
+        - title
+        - description
+        - type
+        - priority
+        - status
+        - dueAt
+        - actorPrincipalId
+        - createdAt
+        - updatedAt
+      properties:
+        taskId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+          enum:
+            - OPEN
+            - COMPLETED
+            - CANCELLED
+        dueAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RelatedCaseLink:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - relatedCaseId
+        - relationship
+        - reason
+        - actorPrincipalId
+        - createdAt
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        relatedCaseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        relationship:
+          type: string
+        reason:
+          type: string
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+    Interaction:
+      type: object
+      additionalProperties: false
+      required:
+        - interactionId
+        - caseId
+        - customerId
+        - type
+        - direction
+        - summary
+        - customerReached
+        - actorPrincipalId
+        - createdAt
+      properties:
+        interactionId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        customerId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        type:
+          type: string
+        direction:
+          type: string
+        summary:
+          type: string
+        customerReached:
+          type: boolean
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+    Article:
+      type: object
+      additionalProperties: false
+      required:
+        - articleId
+        - title
+        - summary
+        - content
+        - category
+        - tags
+        - version
+        - updatedAt
+      properties:
+        articleId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        title:
+          type: string
+        summary:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        version:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+    KnowledgeLink:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - articleId
+        - reason
+        - actorPrincipalId
+        - createdAt
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        articleId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        reason:
+          type: string
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        createdAt:
+          type: string
+          format: date-time
+    SlaPolicy:
+      type: object
+      additionalProperties: false
+      required:
+        - policyId
+        - name
+        - priority
+        - responseMinutes
+        - resolutionMinutes
+      properties:
+        policyId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        name:
+          type: string
+        priority:
+          type: string
+        responseMinutes:
+          type: integer
+          minimum: 1
+        resolutionMinutes:
+          type: integer
+          minimum: 1
+    CaseSla:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - policyId
+        - responseDueAt
+        - resolutionDueAt
+        - state
+        - remainingMinutes
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        policyId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        responseDueAt:
+          type: string
+          format: date-time
+        resolutionDueAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum:
+            - ON_TRACK
+            - AT_RISK
+            - BREACHED
+            - MET
+        remainingMinutes:
+          type: integer
+    SlaRisk:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - level
+        - reasons
+        - recommendedAction
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        level:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+        reasons:
+          type: array
+          items:
+            type: string
+        recommendedAction:
+          type: string
+    Classification:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - category
+        - priority
+        - tags
+        - ruleVersion
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        category:
+          type: string
+        priority:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        ruleVersion:
+          const: support-rules-v1
+    AvailableActions:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - actions
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        actions:
+          type: array
+          items:
+            type: string
+    MissingEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - required
+        - present
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        required:
+          type: array
+          items:
+            type: string
+        present:
+          type: array
+          items:
+            type: string
+    InvestigationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - status
+        - risk
+        - evidenceCount
+        - openTaskCount
+        - verificationStatus
+        - nextBestAction
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        status:
+          type: string
+        risk:
+          type:
+            - string
+            - "null"
+        evidenceCount:
+          type: integer
+        openTaskCount:
+          type: integer
+        verificationStatus:
+          type: string
+        nextBestAction:
+          type: string
+    Checklist:
+      type: object
+      additionalProperties: false
+      required:
+        - caseId
+        - items
+      properties:
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - code
+              - label
+              - completed
+            properties:
+              code:
+                type: string
+              label:
+                type: string
+              completed:
+                type: boolean
+    TimelineEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - caseId
+        - action
+        - actorPrincipalId
+        - requestId
+        - createdAt
+        - metadata
+      properties:
+        eventId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        caseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        action:
+          type: string
+        actorPrincipalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        requestId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+    RemovalResult:
+      type: object
+      additionalProperties: false
+      required:
+        - removed
+        - resourceId
+      properties:
+        removed:
+          const: true
+        resourceId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+    Credential:
+      type: object
+      additionalProperties: false
+      required:
+        - apiKey
+        - principalId
+        - role
+        - displayName
+        - createdAt
+      properties:
+        apiKey:
+          type: string
+          minLength: 20
+          description: Raw credential returned once from this operation.
+        principalId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        role:
+          type: string
+          enum:
+            - SUPPORT_AGENT
+            - SUPPORT_ADMIN
+        displayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RunSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - runId
+        - seedVersion
+        - cases
+        - events
+      properties:
+        runId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        seedVersion:
+          const: fabric-support-v2
+        cases:
+          type: integer
+          minimum: 1
+        events:
+          type: integer
+          minimum: 1
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+            - retryable
+            - requestId
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            retryable:
+              type: boolean
+            requestId:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - field
+                  - issue
+                properties:
+                  field:
+                    type: string
+                  issue:
+                    type: string
+    CaseCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - cases
+        - page
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: "#/components/schemas/Case"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    NoteCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - notes
+        - page
+      properties:
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    EvidenceCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - evidence
+        - page
+      properties:
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    VerificationCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - verificationRequests
+        - page
+      properties:
+        verificationRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/VerificationRequest"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    EscalationCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - escalations
+        - page
+      properties:
+        escalations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Escalation"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    QueueCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - queues
+        - page
+      properties:
+        queues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Queue"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    TaskCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - tasks
+        - page
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    RelatedCaseCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - relatedCases
+        - page
+      properties:
+        relatedCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedCaseLink"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    InteractionCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - interactions
+        - page
+      properties:
+        interactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Interaction"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    ArticleCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - articles
+        - page
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Article"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    KnowledgeLinkCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - knowledgeLinks
+        - page
+      properties:
+        knowledgeLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgeLink"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    SlaPolicyCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - policies
+        - page
+      properties:
+        policies:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlaPolicy"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    TagCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - tags
+        - page
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    TimelineCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+        - page
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+        page:
+          type: object
+          additionalProperties: false
+          required:
+            - limit
+            - nextCursor
+            - hasMore
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            nextCursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+    CreateCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - customerId
+        - transactionId
+        - subject
+        - category
+        - channel
+        - priority
+      properties:
+        customerId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        transactionId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        category:
+          type: string
+          enum:
+            - UNRECOGNIZED_TRANSACTION
+            - PAYMENT_DELAY
+            - ACCOUNT_ACCESS
+            - CARD_ISSUE
+            - OTHER
+        channel:
+          type: string
+          enum:
+            - PHONE
+            - EMAIL
+            - CHAT
+            - IN_APP
+            - API
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        tags:
+          type: array
+          uniqueItems: true
+          maxItems: 20
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+    UpdateCaseRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 160
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        tags:
+          type: array
+          uniqueItems: true
+          maxItems: 20
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+    ReasonRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    CreateNoteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - content
+      properties:
+        type:
+          type: string
+          enum:
+            - INTERNAL_NOTE
+            - CUSTOMER_STATEMENT
+            - INVESTIGATION_SUMMARY
+        content:
+          type: string
+          minLength: 1
+          maxLength: 8000
+    CreateEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - referenceId
+        - source
+        - facts
+      properties:
+        type:
+          type: string
+          enum:
+            - BANKING_TRANSACTION
+            - FRAUD_ASSESSMENT
+            - CUSTOMER_STATEMENT
+            - IDENTITY_VERIFICATION
+            - OTHER
+        referenceId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        source:
+          type: string
+          enum:
+            - banking-api
+            - fraud-api
+            - support-api
+            - customer
+            - other
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        facts:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            transactionId:
+              type: string
+              pattern: ^[A-Za-z0-9_-]{1,64}$
+            amount:
+              type: integer
+              minimum: 0
+            currency:
+              type: string
+              enum:
+                - COSMIC_COINS
+                - GALAXY_GOLD
+                - MOON_BUCKS
+            beneficiaryName:
+              type: string
+              minLength: 1
+              maxLength: 120
+            status:
+              type: string
+              minLength: 1
+              maxLength: 64
+            assessmentId:
+              type: string
+              pattern: ^[A-Za-z0-9_-]{1,64}$
+            riskScore:
+              type: integer
+              minimum: 0
+              maximum: 100
+            riskLevel:
+              type: string
+              enum:
+                - low
+                - medium
+                - high
+                - critical
+            recommendation:
+              type: string
+              minLength: 1
+              maxLength: 120
+            outcome:
+              type: string
+              minLength: 1
+              maxLength: 120
+            statement:
+              type: string
+              minLength: 1
+              maxLength: 4000
+      allOf:
+        - if:
+            properties:
+              type:
+                const: FRAUD_ASSESSMENT
+            required:
+              - type
+          then:
+            properties:
+              facts:
+                type: object
+                properties:
+                  transactionId:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{1,64}$
+                  amount:
+                    type: integer
+                    minimum: 0
+                  currency:
+                    type: string
+                    enum:
+                      - COSMIC_COINS
+                      - GALAXY_GOLD
+                      - MOON_BUCKS
+                  beneficiaryName:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  status:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  assessmentId:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{1,64}$
+                  riskScore:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  riskLevel:
+                    type: string
+                    enum:
+                      - low
+                      - medium
+                      - high
+                      - critical
+                  recommendation:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  outcome:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  statement:
+                    type: string
+                    minLength: 1
+                    maxLength: 4000
+                required:
+                  - assessmentId
+                  - riskScore
+                  - riskLevel
+                  - recommendation
+        - if:
+            properties:
+              type:
+                const: BANKING_TRANSACTION
+            required:
+              - type
+          then:
+            properties:
+              facts:
+                type: object
+                properties:
+                  transactionId:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{1,64}$
+                  amount:
+                    type: integer
+                    minimum: 0
+                  currency:
+                    type: string
+                    enum:
+                      - COSMIC_COINS
+                      - GALAXY_GOLD
+                      - MOON_BUCKS
+                  beneficiaryName:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  status:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  assessmentId:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{1,64}$
+                  riskScore:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  riskLevel:
+                    type: string
+                    enum:
+                      - low
+                      - medium
+                      - high
+                      - critical
+                  recommendation:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  outcome:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  statement:
+                    type: string
+                    minLength: 1
+                    maxLength: 4000
+                required:
+                  - transactionId
+                  - amount
+                  - currency
+                  - beneficiaryName
+    CreateVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - method
+        - reason
+      properties:
+        method:
+          type: string
+          enum:
+            - IDENTITY_CHECK
+            - SECURITY_QUESTIONS
+            - CALLBACK
+            - DOCUMENT_REVIEW
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    CompleteVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - notes
+      properties:
+        outcome:
+          type: string
+          enum:
+            - PASSED
+            - FAILED
+            - EXPIRED
+            - CANCELLED
+        notes:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    CreateEscalationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - target
+        - reason
+      properties:
+        target:
+          type: string
+          enum:
+            - FRAUD_TEAM
+            - PAYMENTS_OPERATIONS
+            - COMPLIANCE
+            - SUPPORT_MANAGER
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        evidenceIds:
+          type: array
+          uniqueItems: true
+          maxItems: 50
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+    ResolveCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - resolutionCode
+        - summary
+        - evidenceIds
+      properties:
+        resolutionCode:
+          type: string
+          enum:
+            - CUSTOMER_VERIFIED_TRANSACTION
+            - CONFIRMED_UNAUTHORIZED
+            - DUPLICATE_CASE
+            - CUSTOMER_WITHDREW
+            - OTHER
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        evidenceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+    TransferCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - queueId
+        - reason
+      properties:
+        queueId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    CreateTaskRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - type
+        - priority
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        type:
+          type: string
+          enum:
+            - REVIEW_TRANSACTION
+            - OBTAIN_FRAUD_ASSESSMENT
+            - VERIFY_IDENTITY
+            - REVIEW_EVIDENCE
+            - CONTACT_CUSTOMER
+            - OTHER
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        dueAt:
+          type: string
+          format: date-time
+    UpdateTaskRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        dueAt:
+          type: string
+          format: date-time
+    LinkCaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - relatedCaseId
+        - relationship
+        - reason
+      properties:
+        relatedCaseId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        relationship:
+          type: string
+          enum:
+            - DUPLICATE
+            - SAME_CUSTOMER
+            - SAME_TRANSACTION
+            - RELATED_INCIDENT
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    CreateInteractionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - direction
+        - summary
+      properties:
+        type:
+          type: string
+          enum:
+            - CALL
+            - EMAIL
+            - CHAT
+            - IN_APP_MESSAGE
+        direction:
+          type: string
+          enum:
+            - INBOUND
+            - OUTBOUND
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        customerReached:
+          type: boolean
+    LinkArticleRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - articleId
+        - reason
+      properties:
+        articleId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    TagRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - tag
+      properties:
+        tag:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+    CreateApiKeyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - role
+        - displayName
+      properties:
+        role:
+          type: string
+          enum:
+            - SUPPORT_AGENT
+            - SUPPORT_ADMIN
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+  responses:
+    BadRequest:
+      description: The request context, parameters, query, or body are invalid.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: A valid Support API key is required.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: The authenticated principal cannot perform this operation.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The requested support resource does not exist in this run.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: The command conflicts with lifecycle or idempotency state.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: The caller exceeded the configured request limit.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+        Retry-After:
+          $ref: "#/components/headers/Retry-After"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ServiceUnavailable:
+      description: Run or idempotency capacity was reached.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: An unexpected server error occurred.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-Demo-Run-Id:
+          $ref: "#/components/headers/X-Demo-Run-Id"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

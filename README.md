@@ -1,259 +1,84 @@
-# Intergalactic Bank API
+# Intergalactic Banking, Fraud, and Support Platform
 
-REST API for managing bank accounts and transactions with multi-currency support (**COSMIC_COINS**, **GALAXY_GOLD**, **MOON_BUCKS**).
+A deterministic Banking REST API and MCP server, Fraud REST API, and Support REST API and MCP server for comparing direct agent tool usage with the same task routed through Postman Fabric Gateway.
 
----
+## Repository layout
 
-## Table of Contents
+```text
+apps/
+  banking-api/       Express REST API with 56 operations
+  banking-mcp/       TypeScript Streamable HTTP MCP server with 50 customer tools
+  fraud-api/         TypeScript REST API with deterministic fraud and retry behavior
+  support-api/       TypeScript support case and investigation REST API
+  support-mcp/       TypeScript Streamable HTTP MCP server with 53 support tools
+packages/
+  demo-fixtures/     Canonical cross-service seed scenarios and integrity checks
+  banking-contract/  Shared operation metadata, JSON Schemas, and OpenAPI generator
+  fraud-contract/    Shared Fraud operation metadata, schemas, and OpenAPI generator
+  support-contract/  Shared Support operation metadata, schemas, and OpenAPI generator
+```
 
-- [Quick Start](#quick-start)
-- [Features](#features)
-- [API Overview](#api-overview)
-- [Authentication](#authentication)
-- [Configuration](#configuration)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [Domain Reference](#domain-reference)
-- [Usage Examples](#usage-examples)
-- [Error Handling](#error-handling)
-- [Tech Stack](#tech-stack)
-- [Extending the API](#extending-the-api)
+Each REST API and its MCP server share a canonical contract. Tool schemas and names are generated from those contracts, so the MCP surfaces cannot silently drift from their APIs.
 
----
+## Seeded demo world
 
-## Quick Start
+Every authenticated run receives an independent copy of a coherent dataset: nine Banking transactions, three completed Fraud assessments, and five Support cases spanning the full lifecycle. Cross-service identifiers, amounts, currencies, and timestamps are validated by the shared `@intergalactic/demo-fixtures` package.
+
+`CASE-2042` / `TX-1042` remains the primary live task. It begins with a customer report but no Banking dispute, Fraud assessment, or attached Support evidence, allowing the Direct and Fabric lanes to perform the same meaningful investigation. See the [Demo Seed Catalogue](docs/Demo-Seed-Catalog.md) for all starting records.
+
+## Run locally
+
+Requires Node.js 20 or newer.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Server: **http://localhost:3000**
+This starts:
 
-Verify:
+- Banking API: `http://127.0.0.1:3000`
+- Banking MCP: `http://127.0.0.1:3100/mcp`
+- Fraud API: `http://127.0.0.1:8080`
+- Support API: `http://127.0.0.1:8090`
+- Support MCP: `http://127.0.0.1:3200/mcp`
+
+The local Banking MCP credential is `banking-mcp-demo-key`; the Support MCP credential is `support-mcp-demo-key`. Use either the canonical header:
+
+```text
+Authorization: Bearer <MCP credential>
+```
+
+or the API-key convenience header:
+
+```text
+X-API-Key: <MCP credential>
+```
+
+Each MCP credential is intentionally separate from its downstream API credential. The servers supply downstream credentials privately; they are absent from `tools/list`, tool arguments, results, and logs.
+
+Use `X-Demo-Run-Id: direct-demo` or `fabric-demo` on the MCP request to isolate comparison lanes. Use the same `X-Request-Id` when replaying a logical action: the MCP server derives a deterministic downstream idempotency key from the request ID, operation, and canonical arguments.
+
+## MCP surface
+
+The server exposes 50 customer-safe tools across accounts, transactions, customers, beneficiaries, cards, scheduled payments, standing orders, direct debits, statements, FX, notification preferences, disputes, and audit events.
+
+Administrative credential creation, demo reset, dispute status administration, service health, OpenAPI download, and legacy credential creation stay REST-only. In particular, the model cannot supply credentials, idempotency keys, or run identifiers as tool arguments.
+
+Every result includes concise text plus structured JSON. The Support MCP keeps operational telemetry in server logs rather than adding custom result `_meta`; this avoids using agent context for data already captured by Fabric Gateway. Both direct MCP servers intentionally perform one downstream attempt, so Gateway-managed retries remain visible in the comparison.
+
+The Fraud API remains REST-only so the comparison can demonstrate a mixed MCP and API task. It uses `fraud-demo-key` for business calls and a separate `fraud-admin-demo-key` for local fault/reset controls. See [Fraud API documentation](apps/fraud-api/README.md) and the [revised Fraud MVP specification](docs/Fraud-API-MVP-Spec.md).
+
+The Support API contains 62 operations; its MCP publishes 53 contract-selected investigation tools. Its canonical `CASE-2042` fixture is linked to Banking transaction `TX-1042` and begins without Fraud evidence so the agent must perform the investigation. See [Support API documentation](apps/support-api/README.md), [Support MCP documentation](apps/support-mcp/README.md), the [Support API specification](docs/Support-API-Spec.md), and the [Demo Seed Catalogue](docs/Demo-Seed-Catalog.md).
+
+See [Banking API documentation](apps/banking-api/README.md) and [Banking MCP documentation](apps/banking-mcp/README.md) for Banking details.
+
+## Verification
 
 ```bash
-curl http://localhost:3000/health
+npm run verify
 ```
 
-**Postman:** Import `OpenAPI/Bank API Reference Documentation.postman_collection.json`, set `baseUrl` to `http://localhost:3000` and `apiKey` to `1234`.
+This regenerates and checks all OpenAPI contracts, verifies the cross-service seed catalogue and all Banking and Support operation and tool catalogues, runs both MCP protocol suites, verifies Fraud retry behavior and cross-service lane determinism, enforces coverage thresholds, type-checks TypeScript, and builds the TypeScript services.
 
----
-
-## Features
-
-| Area | Description |
-|------|--------------|
-| **Accounts** | Create, read, update, delete (ownership-based). |
-| **Transactions** | Transfers between accounts; deposits from external source. |
-| **Currencies** | COSMIC_COINS, GALAXY_GOLD, MOON_BUCKS. |
-| **Auth** | API key in `x-api-key` header. |
-| **Rate limit** | 300 requests per minute per key. |
-| **Ownership** | Each key only accesses accounts created with that key. |
-
----
-
-## API Overview
-
-### Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | No | Health check. |
-| GET | `/api/v1/auth` | No | Generate a new API key. |
-| GET | `/api/v1/accounts` | Yes | List accounts for the current key. |
-| GET | `/api/v1/accounts/:id` | Yes | Get one account by ID. |
-| POST | `/api/v1/accounts` | Yes | Create an account. |
-| PUT | `/api/v1/accounts/:id` | Yes | Update account (owner name, account type only). |
-| DELETE | `/api/v1/accounts/:id` | Yes | Soft-delete account. |
-| GET | `/api/v1/transactions` | Yes | List transactions (query params supported). |
-| GET | `/api/v1/transactions/:id` | Yes | Get one transaction by ID. |
-| POST | `/api/v1/transactions` | Yes | Transfer funds or deposit (body defines type). |
-
-Base URL: `http://localhost:3000` (or your configured `PORT`).
-
----
-
-## Authentication
-
-- **Header:** `x-api-key: <your-api-key>`
-- **Get a key:** `GET /api/v1/auth` (no auth required).
-- **Default admin key:** `1234` (from `ADMIN_API_KEY` in `.env`).
-
-All endpoints except `/health`, `/`, and `/api/v1/auth` require this header.
-
----
-
-## Configuration
-
-Optional `.env` (copy from `.env.example` if present):
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Server port. |
-| `ADMIN_API_KEY` | `1234` | Admin API key. |
-| `RATE_LIMIT_REQUESTS` | `300` | Max requests per window. |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms). |
-
----
-
-## Project Structure
-
-```
-src/
-├── server.js              # Entry point, middleware, route mounting
-├── database/
-│   └── db.js              # In-memory storage (singleton)
-├── models/
-│   ├── Account.js         # Account model and validation
-│   └── Transaction.js     # Transaction model
-├── routes/
-│   ├── admin.js           # GET /api/v1/auth (key generation)
-│   ├── accounts.js        # Account CRUD
-│   └── transactions.js    # Transactions list, get, transfer/deposit
-└── middleware/
-    ├── auth.js            # API key validation and admin check
-    ├── errorHandler.js    # Central error handler
-    └── rateLimit.js       # Per-key rate limiting
-```
-
----
-
-## Development
-
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Run with auto-reload. |
-| `npm start` | Run in production mode. |
-| `npm test` | Run test suite. |
-| `npm test -- --coverage` | Run tests with coverage. |
-| `npm run lint` | Lint; use `npm run lint:fix` to fix. |
-
----
-
-## Domain Reference
-
-### Account types
-
-- **STANDARD** — Default.
-- **PREMIUM** — Premium features.
-- **BUSINESS** — Business account.
-
-### Currencies
-
-- **COSMIC_COINS** — Universal.
-- **GALAXY_GOLD** — Premium.
-- **MOON_BUCKS** — Alternative.
-
-### Sample data (on startup)
-
-Three accounts are created, all owned by admin key `1234`:
-
-- Account 1: Nova Newman — 10,000 COSMIC_COINS  
-- Account 2: Gary Galaxy — 237 COSMIC_COINS  
-- Account 3: Luna Starlight — 5,000 GALAXY_GOLD  
-
-### Rules
-
-- **Ownership:** A key can only access accounts created with that key.
-- **Soft delete:** Deleted accounts are marked deleted; history is kept.
-- **Balance/currency:** Change only via transactions, not via account update.
-- **Editable fields:** Only owner name and account type on existing accounts.
-
----
-
-## Usage Examples
-
-### Create an account
-
-`POST /api/v1/accounts` with body:
-
-```json
-{
-  "owner": "John Doe",
-  "currency": "COSMIC_COINS",
-  "balance": 1000,
-  "accountType": "STANDARD"
-}
-```
-
-### Transfer between accounts
-
-`POST /api/v1/transactions` with body:
-
-```json
-{
-  "fromAccountId": "account-uuid-1",
-  "toAccountId": "account-uuid-2",
-  "amount": 500,
-  "currency": "COSMIC_COINS"
-}
-```
-
-### Deposit from external source
-
-Same endpoint; use `fromAccountId: "0"`:
-
-```json
-{
-  "fromAccountId": "0",
-  "toAccountId": "account-uuid",
-  "amount": 100,
-  "currency": "COSMIC_COINS"
-}
-```
-
----
-
-## Error Handling
-
-All error responses use this shape:
-
-```json
-{
-  "error": {
-    "name": "errorType",
-    "message": "Human-readable description"
-  }
-}
-```
-
-| Status | Meaning |
-|--------|---------|
-| 400 | Validation or bad request. |
-| 401 | Missing or invalid API key. |
-| 403 | Not allowed (e.g. wrong account owner). |
-| 404 | Resource not found. |
-| 429 | Rate limit exceeded. |
-| 500 | Server error. |
-
----
-
-## Tech Stack
-
-- **Runtime:** Node.js  
-- **Framework:** Express.js  
-- **Storage:** In-memory (Map-based; swappable)  
-- **Testing:** Jest  
-- **Auth:** API key via header  
-
----
-
-## Extending the API
-
-**Using a real database:**
-
-1. Install the driver (e.g. `pg`, `mongodb`).
-2. Update `src/database/db.js` with connection and CRUD using the same interface so routes stay unchanged.
-
----
-
-## License
-
-ISC.
-
----
-
-**Detailed API docs** → Postman collection  
-**Architecture** → `CLAUDE.md`  
-**Issues** → Run `npm test` and check tests
+Configuration defaults are documented in [.env.example](.env.example). Production mode requires explicit credentials for Banking MCP/downstream access, Fraud, Support, and Support MCP/downstream access.

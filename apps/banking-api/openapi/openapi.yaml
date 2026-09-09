@@ -1,0 +1,3631 @@
+openapi: 3.1.0
+info:
+  title: Intergalactic Banking API
+  version: 2.0.0
+  description: A deterministic, run-scoped Banking API for comparing direct agent integrations with Postman
+    Fabric Gateway. Monetary values are non-negative safe integers in minor units; all fictional currencies
+    currently use exponent 0.
+  contact:
+    name: Intergalactic Banking API team
+    url: https://www.postman.com/
+  license:
+    name: ISC
+servers:
+  - url: http://localhost:3000
+    description: Local demo server
+tags:
+  - name: System
+    description: Health and contract discovery.
+  - name: Admin
+    description: Credential administration.
+  - name: Accounts
+    description: Caller-owned accounts.
+  - name: Transactions
+    description: Atomic immutable ledger entries.
+  - name: Customers
+    description: Customer profiles.
+  - name: Beneficiaries
+    description: Verified payment destinations.
+  - name: Cards
+    description: Cards and lifecycle controls.
+  - name: Payments
+    description: Scheduled payments, standing orders, and direct debits.
+  - name: Statements
+    description: Paginated transaction statements.
+  - name: Foreign Exchange
+    description: Rational deterministic FX rates and quotes.
+  - name: Notifications
+    description: Constrained notification preferences.
+  - name: Disputes
+    description: Customer evidence and administrator-controlled lifecycle.
+  - name: Audit
+    description: Append-only activity history.
+  - name: Demo
+    description: Canonical run reset.
+security:
+  - ApiKeyAuth: []
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      summary: Check service health
+      description: Check service health in the selected run.
+      operationId: checkHealth
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Check service health succeeded.
+          headers:
+            X-Demo-Run-Id: &a1
+              $ref: "#/components/headers/X-Demo-Run-Id"
+            X-Request-Id: &a2
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit: &a3
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining: &a4
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset: &a5
+              $ref: "#/components/headers/X-RateLimit-Reset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      security: []
+  /openapi.yaml:
+    get:
+      tags:
+        - System
+      summary: Download the OpenAPI contract
+      description: Download the OpenAPI contract in the selected run.
+      operationId: getOpenApiDocument
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Download the OpenAPI contract succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/yaml:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      security: []
+  /api/v1/auth:
+    get:
+      tags:
+        - Admin
+      summary: Create a deprecated development credential
+      description: Create a deprecated development credential in the selected run.
+      operationId: generateLegacyApiKey
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Create a deprecated development credential succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      security: []
+  /api/v1/admin/api-keys:
+    post:
+      tags:
+        - Admin
+      summary: Create an API credential
+      description: Create an API credential in the selected run. Requires an ADMIN principal.
+      operationId: createApiKey
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create an API credential succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateCredentialRequest"
+  /api/v1/accounts:
+    get:
+      tags:
+        - Accounts
+      summary: List owned accounts
+      description: List owned accounts in the selected run.
+      operationId: listAccounts
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: owner
+          in: query
+          required: false
+          description: Optional owner filter.
+          schema:
+            type: string
+        - name: createdAt
+          in: query
+          required: false
+          description: Optional createdAt filter.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List owned accounts succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Accounts
+      summary: Create an account
+      description: Create an account in the selected run.
+      operationId: createAccount
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create an account succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
+  /api/v1/accounts/{accountId}:
+    get:
+      tags:
+        - Accounts
+      summary: Get an owned account
+      description: Get an owned account in the selected run.
+      operationId: getAccount
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: accountId
+          in: path
+          required: true
+          description: Run-scoped accountId value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get an owned account succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    put:
+      tags:
+        - Accounts
+      summary: Replace mutable account fields
+      description: Replace mutable account fields in the selected run.
+      operationId: updateAccount
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: accountId
+          in: path
+          required: true
+          description: Run-scoped accountId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Replace mutable account fields succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountRequest"
+    patch:
+      tags:
+        - Accounts
+      summary: Update mutable account fields
+      description: Update mutable account fields in the selected run.
+      operationId: patchAccount
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: accountId
+          in: path
+          required: true
+          description: Run-scoped accountId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update mutable account fields succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountRequest"
+    delete:
+      tags:
+        - Accounts
+      summary: Deactivate an empty account
+      description: Deactivate an empty account in the selected run.
+      operationId: deleteAccount
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: accountId
+          in: path
+          required: true
+          description: Run-scoped accountId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Deactivate an empty account succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/transactions:
+    get:
+      tags:
+        - Transactions
+      summary: List visible transactions
+      description: List visible transactions in the selected run.
+      operationId: listTransactions
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: fromAccountId
+          in: query
+          required: false
+          description: Optional fromAccountId filter.
+          schema:
+            type: string
+        - name: toAccountId
+          in: query
+          required: false
+          description: Optional toAccountId filter.
+          schema:
+            type: string
+        - name: createdAt
+          in: query
+          required: false
+          description: Optional createdAt filter.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List visible transactions succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Transactions
+      summary: Post an atomic transfer or deposit
+      description: Post an atomic transfer or deposit in the selected run.
+      operationId: createTransaction
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Post an atomic transfer or deposit succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+  /api/v1/transactions/{transactionId}:
+    get:
+      tags:
+        - Transactions
+      summary: Get a visible transaction
+      description: Get a visible transaction in the selected run.
+      operationId: getTransaction
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: transactionId
+          in: path
+          required: true
+          description: Run-scoped transactionId value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a visible transaction succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/disputes:
+    get:
+      tags:
+        - Disputes
+      summary: List visible disputes
+      description: List visible disputes in the selected run.
+      operationId: listDisputes
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: transactionId
+          in: query
+          required: false
+          description: Optional transactionId filter.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List visible disputes succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisputeList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Disputes
+      summary: Open a transaction dispute
+      description: Open a transaction dispute in the selected run.
+      operationId: createDispute
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Open a transaction dispute succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisputeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDisputeRequest"
+  /api/v1/disputes/{disputeId}:
+    get:
+      tags:
+        - Disputes
+      summary: Get a visible dispute
+      description: Get a visible dispute in the selected run.
+      operationId: getDispute
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: disputeId
+          in: path
+          required: true
+          description: Run-scoped disputeId value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a visible dispute succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisputeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/disputes/{disputeId}/status:
+    patch:
+      tags:
+        - Disputes
+      summary: Transition a dispute as an administrator
+      description: Transition a dispute as an administrator in the selected run. Requires an ADMIN principal.
+      operationId: updateDisputeStatus
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: disputeId
+          in: path
+          required: true
+          description: Run-scoped disputeId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Transition a dispute as an administrator succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisputeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisputeStatusRequest"
+  /api/v1/disputes/{disputeId}/evidence:
+    get:
+      tags:
+        - Disputes
+      summary: List dispute evidence
+      description: List dispute evidence in the selected run.
+      operationId: listDisputeEvidence
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: disputeId
+          in: path
+          required: true
+          description: Run-scoped disputeId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List dispute evidence succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Disputes
+      summary: Attach dispute evidence
+      description: Attach dispute evidence in the selected run.
+      operationId: addDisputeEvidence
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: disputeId
+          in: path
+          required: true
+          description: Run-scoped disputeId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Attach dispute evidence succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisputeEvidenceRequest"
+  /api/v1/demo/runs/{runId}/reset:
+    post:
+      tags:
+        - Demo
+      summary: Reset a canonical demo run
+      description: Reset a canonical demo run in the selected run. Requires an ADMIN principal.
+      operationId: resetDemoRun
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: runId
+          in: path
+          required: true
+          description: Run-scoped runId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Reset a canonical demo run succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoRunResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/customers/me:
+    get:
+      tags:
+        - Customers
+      summary: Get the current customer
+      description: Get the current customer in the selected run.
+      operationId: getCurrentCustomer
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Get the current customer succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Customers
+      summary: Update customer contact details
+      description: Update customer contact details in the selected run.
+      operationId: updateCurrentCustomer
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update customer contact details succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerRequest"
+  /api/v1/beneficiaries:
+    get:
+      tags:
+        - Beneficiaries
+      summary: List beneficiaries
+      description: List beneficiaries in the selected run.
+      operationId: listBeneficiaries
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List beneficiaries succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeneficiaryList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Beneficiaries
+      summary: Create an unverified beneficiary
+      description: Create an unverified beneficiary in the selected run.
+      operationId: createBeneficiary
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create an unverified beneficiary succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeneficiaryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBeneficiaryRequest"
+  /api/v1/beneficiaries/{id}:
+    get:
+      tags:
+        - Beneficiaries
+      summary: Get a beneficiary
+      description: Get a beneficiary in the selected run.
+      operationId: getBeneficiary
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a beneficiary succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeneficiaryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Beneficiaries
+      summary: Update a beneficiary
+      description: Update a beneficiary in the selected run.
+      operationId: updateBeneficiary
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update a beneficiary succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeneficiaryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBeneficiaryRequest"
+    delete:
+      tags:
+        - Beneficiaries
+      summary: Deactivate a beneficiary
+      description: Deactivate a beneficiary in the selected run.
+      operationId: cancelBeneficiary
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Deactivate a beneficiary succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeneficiaryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/cards:
+    get:
+      tags:
+        - Cards
+      summary: List cards
+      description: List cards in the selected run.
+      operationId: listCards
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List cards succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Cards
+      summary: Create a card
+      description: Create a card in the selected run.
+      operationId: createCard
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a card succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCardRequest"
+  /api/v1/cards/{id}:
+    get:
+      tags:
+        - Cards
+      summary: Get a card
+      description: Get a card in the selected run.
+      operationId: getCard
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a card succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/cards/{id}/freeze:
+    post:
+      tags:
+        - Cards
+      summary: Freeze an active card
+      description: Freeze an active card in the selected run.
+      operationId: freezeCard
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Freeze an active card succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/cards/{id}/unfreeze:
+    post:
+      tags:
+        - Cards
+      summary: Unfreeze a frozen card
+      description: Unfreeze a frozen card in the selected run.
+      operationId: unfreezeCard
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Unfreeze a frozen card succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/cards/{id}/limits:
+    patch:
+      tags:
+        - Cards
+      summary: Update a card spending limit
+      description: Update a card spending limit in the selected run.
+      operationId: updateCardLimit
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update a card spending limit succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardLimitRequest"
+  /api/v1/cards/{id}/replace:
+    post:
+      tags:
+        - Cards
+      summary: Replace an active or frozen card
+      description: Replace an active or frozen card in the selected run.
+      operationId: replaceCard
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Replace an active or frozen card succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/scheduled-payments:
+    get:
+      tags:
+        - Payments
+      summary: List scheduled payments
+      description: List scheduled payments in the selected run.
+      operationId: listScheduledPayments
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List scheduled payments succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledPaymentList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Payments
+      summary: Create a scheduled payment
+      description: Create a scheduled payment in the selected run.
+      operationId: createScheduledPayment
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a scheduled payment succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduledPaymentRequest"
+  /api/v1/scheduled-payments/{id}:
+    get:
+      tags:
+        - Payments
+      summary: Get a scheduled payment
+      description: Get a scheduled payment in the selected run.
+      operationId: getScheduledPayment
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a scheduled payment succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Payments
+      summary: Update a scheduled payment
+      description: Update a scheduled payment in the selected run.
+      operationId: updateScheduledPayment
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update a scheduled payment succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScheduledPaymentRequest"
+    delete:
+      tags:
+        - Payments
+      summary: Cancel a scheduled payment
+      description: Cancel a scheduled payment in the selected run.
+      operationId: cancelScheduledPayment
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Cancel a scheduled payment succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/standing-orders:
+    get:
+      tags:
+        - Payments
+      summary: List standing orders
+      description: List standing orders in the selected run.
+      operationId: listStandingOrders
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List standing orders succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StandingOrderList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Payments
+      summary: Create a standing order
+      description: Create a standing order in the selected run.
+      operationId: createStandingOrder
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a standing order succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStandingOrderRequest"
+  /api/v1/standing-orders/{id}:
+    get:
+      tags:
+        - Payments
+      summary: Get a standing order
+      description: Get a standing order in the selected run.
+      operationId: getStandingOrder
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a standing order succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Payments
+      summary: Update a standing order
+      description: Update a standing order in the selected run.
+      operationId: updateStandingOrder
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update a standing order succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStandingOrderRequest"
+    delete:
+      tags:
+        - Payments
+      summary: Cancel a standing order
+      description: Cancel a standing order in the selected run.
+      operationId: cancelStandingOrder
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Cancel a standing order succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/direct-debits:
+    get:
+      tags:
+        - Payments
+      summary: List direct debits
+      description: List direct debits in the selected run.
+      operationId: listDirectDebits
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List direct debits succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectDebitList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags:
+        - Payments
+      summary: Create a direct debit
+      description: Create a direct debit in the selected run.
+      operationId: createDirectDebit
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a direct debit succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDirectDebitRequest"
+  /api/v1/direct-debits/{id}:
+    get:
+      tags:
+        - Payments
+      summary: Get a direct debit
+      description: Get a direct debit in the selected run.
+      operationId: getDirectDebit
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Get a direct debit succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Payments
+      summary: Update a direct debit
+      description: Update a direct debit in the selected run.
+      operationId: updateDirectDebit
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update a direct debit succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDirectDebitRequest"
+    delete:
+      tags:
+        - Payments
+      summary: Cancel a direct debit
+      description: Cancel a direct debit in the selected run.
+      operationId: cancelDirectDebit
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Run-scoped id value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Cancel a direct debit succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/statements:
+    get:
+      tags:
+        - Statements
+      summary: List statement transactions
+      description: List statement transactions in the selected run.
+      operationId: listStatements
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List statement transactions succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/statements/{accountId}:
+    get:
+      tags:
+        - Statements
+      summary: Get an account statement
+      description: Get an account statement in the selected run.
+      operationId: getAccountStatement
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: accountId
+          in: path
+          required: true
+          description: Run-scoped accountId value.
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Get an account statement succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountStatement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/fx/rates:
+    get:
+      tags:
+        - Foreign Exchange
+      summary: Get deterministic exchange rates
+      description: Get deterministic exchange rates in the selected run.
+      operationId: getExchangeRates
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - name: base
+          in: query
+          required: false
+          description: Optional base filter.
+          schema: &a8
+            type: string
+            enum:
+              - COSMIC_COINS
+              - GALAXY_GOLD
+              - MOON_BUCKS
+      responses:
+        "200":
+          description: Get deterministic exchange rates succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FxRates"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/fx/quote:
+    post:
+      tags:
+        - Foreign Exchange
+      summary: Create a deterministic FX quote
+      description: Create a deterministic FX quote in the selected run.
+      operationId: createFxQuote
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Create a deterministic FX quote succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FxQuoteRequest"
+  /api/v1/notification-preferences:
+    get:
+      tags:
+        - Notifications
+      summary: Get notification preferences
+      description: Get notification preferences in the selected run.
+      operationId: getNotificationPreferences
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Get notification preferences succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags:
+        - Notifications
+      summary: Update notification preferences
+      description: Update notification preferences in the selected run.
+      operationId: updateNotificationPreferences
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Update notification preferences succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferencesRequest"
+  /api/v1/audit-events:
+    get:
+      tags:
+        - Audit
+      summary: List append-only audit events
+      description: List append-only audit events in the selected run.
+      operationId: listAuditEvents
+      parameters:
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: List append-only audit events succeeded.
+          headers:
+            X-Demo-Run-Id: *a1
+            X-Request-Id: *a2
+            X-RateLimit-Limit: *a3
+            X-RateLimit-Remaining: *a4
+            X-RateLimit-Reset: *a5
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: A credential resolving to a CUSTOMER or ADMIN principal.
+  parameters:
+    DemoRunId:
+      name: X-Demo-Run-Id
+      in: header
+      required: false
+      description: Isolates state for a comparison lane; defaults to default.
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{1,64}$
+        default: default
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Caller-provided correlation identifier; generated deterministically when omitted.
+      schema:
+        type: string
+        minLength: 1
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Required for mutations. Exact replays return the original sanitized response; conflicting or
+        concurrent duplicates return 409.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque collection-scoped continuation cursor.
+      schema:
+        type: string
+  headers:
+    X-Demo-Run-Id:
+      description: Selected demo run.
+      schema:
+        type: string
+    X-Request-Id:
+      description: Request correlation identifier.
+      schema:
+        type: string
+    X-RateLimit-Limit:
+      description: Request limit for the current window.
+      schema:
+        type: integer
+    X-RateLimit-Remaining:
+      description: Requests remaining in the current window.
+      schema:
+        type: integer
+    X-RateLimit-Reset:
+      description: Unix time when the window resets.
+      schema:
+        type: integer
+    Retry-After:
+      description: Seconds until another request should be attempted.
+      schema:
+        type: integer
+        minimum: 1
+    Idempotency-Replayed:
+      description: True when the response was replayed.
+      schema:
+        type: string
+        const: "true"
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+        - timestamp
+        - uptime
+      properties:
+        status:
+          const: healthy
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - name
+            - message
+          properties:
+            name:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+    Page:
+      type: object
+      additionalProperties: false
+      required:
+        - limit
+        - nextCursor
+        - hasMore
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        nextCursor:
+          type:
+            - string
+            - "null"
+        hasMore:
+          type: boolean
+    Principal:
+      type: object
+      additionalProperties: false
+      required:
+        - principalId
+        - role
+      properties:
+        principalId:
+          type: string
+          pattern: ^PRN-
+        role:
+          type: string
+          enum:
+            - CUSTOMER
+            - ADMIN
+        customerId:
+          type: string
+          pattern: ^CUS-
+    CredentialCreated:
+      type: object
+      additionalProperties: false
+      required:
+        - apiKey
+        - principal
+      properties:
+        apiKey:
+          type: string
+          writeOnly: true
+        principal:
+          $ref: "#/components/schemas/Principal"
+    Account:
+      type: object
+      additionalProperties: false
+      required:
+        - accountId
+        - owner
+        - accountType
+        - createdAt
+        - balance
+        - currency
+        - status
+      properties:
+        accountId:
+          type: string
+        owner:
+          type: string
+        accountType:
+          type: string
+          enum:
+            - STANDARD
+            - PREMIUM
+            - BUSINESS
+        createdAt:
+          type: string
+          format: date
+        balance: &a6
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        currency: &a7
+          type: string
+          enum:
+            - COSMIC_COINS
+            - GALAXY_GOLD
+            - MOON_BUCKS
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - INACTIVE
+    Transaction:
+      type: object
+      additionalProperties: false
+      required:
+        - transactionId
+        - createdAt
+        - amount
+        - currency
+        - fromAccountId
+        - toAccountId
+        - status
+        - description
+        - beneficiaryName
+        - channel
+        - deviceTrusted
+        - location
+      properties:
+        transactionId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        amount: *a6
+        currency: *a7
+        fromAccountId:
+          type: string
+        toAccountId:
+          type: string
+        status:
+          type: string
+          enum:
+            - POSTED
+        description:
+          type:
+            - string
+            - "null"
+        beneficiaryName:
+          type:
+            - string
+            - "null"
+        channel:
+          type:
+            - string
+            - "null"
+        deviceTrusted:
+          type:
+            - boolean
+            - "null"
+        location:
+          type:
+            - string
+            - "null"
+    Customer:
+      type: object
+      additionalProperties: false
+      required:
+        - customerId
+        - name
+        - email
+        - phone
+        - address
+        - kycStatus
+      properties:
+        customerId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        kycStatus:
+          type: string
+          enum:
+            - PENDING
+            - VERIFIED
+            - REJECTED
+    Beneficiary:
+      type: object
+      additionalProperties: false
+      required:
+        - beneficiaryId
+        - name
+        - status
+        - createdAt
+      properties:
+        beneficiaryId:
+          type: string
+        name:
+          type: string
+        accountId:
+          type: string
+        externalAccount:
+          type: string
+        status:
+          type: string
+          enum:
+            - PENDING_VERIFICATION
+            - TRUSTED
+            - INACTIVE
+        createdAt:
+          type: string
+          format: date-time
+    Card:
+      type: object
+      additionalProperties: false
+      required:
+        - cardId
+        - accountId
+        - type
+        - last4
+        - status
+        - spendingLimit
+        - currency
+      properties:
+        cardId:
+          type: string
+        accountId:
+          type: string
+        type:
+          type: string
+          enum:
+            - PHYSICAL
+            - VIRTUAL
+        last4:
+          type: string
+          pattern: ^[0-9]{4}$
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - FROZEN
+            - REPLACED
+        spendingLimit: *a6
+        currency: *a7
+        replacedByCardId:
+          type: string
+    Payment:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - status
+      properties:
+        paymentId:
+          type: string
+        standingOrderId:
+          type: string
+        directDebitId:
+          type: string
+        fromAccountId:
+          type: string
+        accountId:
+          type: string
+        beneficiaryId:
+          type: string
+        merchant:
+          type: string
+        mandateReference:
+          type: string
+        amount: *a6
+        currency: *a7
+        executeAt:
+          type: string
+          format: date-time
+        nextExecutionAt:
+          type: string
+          format: date-time
+        frequency:
+          type: string
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - SCHEDULED
+            - PAUSED
+            - CANCELLED
+    Dispute:
+      type: object
+      additionalProperties: false
+      required:
+        - disputeId
+        - transactionId
+        - reason
+        - notes
+        - status
+        - createdAt
+      properties:
+        disputeId:
+          type: string
+        transactionId:
+          type: string
+        reason:
+          type: string
+        notes:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - OPEN
+            - UNDER_REVIEW
+            - RESOLVED
+            - REJECTED
+        createdAt:
+          type: string
+          format: date-time
+    Evidence:
+      type: object
+      additionalProperties: false
+      required:
+        - evidenceId
+        - type
+        - description
+        - createdAt
+      properties:
+        evidenceId:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    NotificationPreferences:
+      type: object
+      additionalProperties: false
+      required:
+        - transactionAlerts
+        - fraudAlerts
+        - marketing
+        - channels
+      properties:
+        transactionAlerts:
+          type: boolean
+        fraudAlerts:
+          type: boolean
+        marketing:
+          type: boolean
+        channels:
+          type: array
+          items:
+            type: string
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - actorPrincipalId
+        - action
+        - resourceType
+        - resourceId
+        - createdAt
+      properties:
+        eventId:
+          type: string
+        actorPrincipalId:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    FxRates:
+      type: object
+      additionalProperties: false
+      required:
+        - base
+        - rates
+      properties:
+        base: *a7
+        rates:
+          type: object
+          additionalProperties:
+            type: number
+            exclusiveMinimum: 0
+    FxQuote:
+      type: object
+      additionalProperties: false
+      required:
+        - quoteId
+        - from
+        - to
+        - amount
+        - convertedAmount
+        - rounding
+        - expiresAt
+      properties:
+        quoteId:
+          type: string
+        from: *a7
+        to: *a7
+        amount: *a6
+        convertedAmount: *a6
+        rounding:
+          const: FLOOR
+        expiresAt:
+          type: string
+          format: date-time
+    DemoRun:
+      type: object
+      additionalProperties: false
+      required:
+        - runId
+        - seedVersion
+        - accounts
+        - transactions
+        - disputes
+      properties:
+        runId:
+          type: string
+        seedVersion:
+          const: fabric-banking-v2
+        accounts:
+          type: integer
+        transactions:
+          type: integer
+        disputes:
+          type: integer
+    AccountResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - account
+      properties:
+        account:
+          $ref: "#/components/schemas/Account"
+    AccountList:
+      type: object
+      additionalProperties: false
+      required:
+        - accounts
+        - page
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
+        page:
+          $ref: "#/components/schemas/Page"
+    TransactionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - transaction
+      properties:
+        transaction:
+          $ref: "#/components/schemas/Transaction"
+    TransactionList:
+      type: object
+      additionalProperties: false
+      required:
+        - transactions
+        - page
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        page:
+          $ref: "#/components/schemas/Page"
+    CustomerResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - customer
+      properties:
+        customer:
+          $ref: "#/components/schemas/Customer"
+    BeneficiaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - beneficiary
+      properties:
+        beneficiary:
+          $ref: "#/components/schemas/Beneficiary"
+    BeneficiaryList:
+      type: object
+      additionalProperties: false
+      required:
+        - beneficiaries
+        - page
+      properties:
+        beneficiaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Beneficiary"
+        page:
+          $ref: "#/components/schemas/Page"
+    CardResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - card
+      properties:
+        card:
+          $ref: "#/components/schemas/Card"
+    CardList:
+      type: object
+      additionalProperties: false
+      required:
+        - cards
+        - page
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Card"
+        page:
+          $ref: "#/components/schemas/Page"
+    PaymentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - item
+      properties:
+        item:
+          $ref: "#/components/schemas/Payment"
+    ScheduledPaymentList:
+      type: object
+      additionalProperties: false
+      required:
+        - scheduledPayments
+        - page
+      properties:
+        scheduledPayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        page:
+          $ref: "#/components/schemas/Page"
+    StandingOrderList:
+      type: object
+      additionalProperties: false
+      required:
+        - standingOrders
+        - page
+      properties:
+        standingOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        page:
+          $ref: "#/components/schemas/Page"
+    DirectDebitList:
+      type: object
+      additionalProperties: false
+      required:
+        - directDebits
+        - page
+      properties:
+        directDebits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        page:
+          $ref: "#/components/schemas/Page"
+    DisputeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - dispute
+      properties:
+        dispute:
+          $ref: "#/components/schemas/Dispute"
+    DisputeList:
+      type: object
+      additionalProperties: false
+      required:
+        - disputes
+        - page
+      properties:
+        disputes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dispute"
+        page:
+          $ref: "#/components/schemas/Page"
+    EvidenceResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - evidence
+      properties:
+        evidence:
+          $ref: "#/components/schemas/Evidence"
+    EvidenceList:
+      type: object
+      additionalProperties: false
+      required:
+        - evidence
+        - page
+      properties:
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        page:
+          $ref: "#/components/schemas/Page"
+    PreferencesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - preferences
+      properties:
+        preferences:
+          $ref: "#/components/schemas/NotificationPreferences"
+    AuditList:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+        - page
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+        page:
+          $ref: "#/components/schemas/Page"
+    AccountStatement:
+      type: object
+      additionalProperties: false
+      required:
+        - accountId
+        - transactions
+        - page
+      properties:
+        accountId:
+          type: string
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        page:
+          $ref: "#/components/schemas/Page"
+    QuoteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - quote
+      properties:
+        quote:
+          $ref: "#/components/schemas/FxQuote"
+    DemoRunResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - run
+      properties:
+        run:
+          $ref: "#/components/schemas/DemoRun"
+    CreateAccountRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - owner
+        - currency
+      properties:
+        owner:
+          type: string
+          minLength: 1
+        balance:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        currency: *a8
+        accountType:
+          type: string
+          enum:
+            - STANDARD
+            - PREMIUM
+            - BUSINESS
+    UpdateAccountRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        owner:
+          type: string
+          minLength: 1
+        accountType:
+          type: string
+          enum:
+            - STANDARD
+            - PREMIUM
+            - BUSINESS
+    CreateTransactionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fromAccountId
+        - toAccountId
+        - amount
+        - currency
+      properties:
+        fromAccountId:
+          type: string
+          minLength: 1
+        toAccountId:
+          type: string
+          minLength: 1
+        amount: &a9
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        currency: *a8
+        description:
+          type: string
+        beneficiaryName:
+          type: string
+        channel:
+          type: string
+          enum:
+            - MOBILE_APP
+            - WEB
+            - API
+            - BRANCH
+        deviceTrusted:
+          type: boolean
+        location:
+          type: string
+    CreateDisputeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - transactionId
+        - reason
+      properties:
+        transactionId:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          enum:
+            - CUSTOMER_NOT_RECOGNIZED
+            - DUPLICATE
+            - INCORRECT_AMOUNT
+            - OTHER
+        notes:
+          type: string
+    UpdateCustomerRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          minLength: 1
+        address:
+          type: string
+          minLength: 1
+    CreateBeneficiaryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      anyOf:
+        - required:
+            - accountId
+        - required:
+            - externalAccount
+      properties:
+        name:
+          type: string
+          minLength: 1
+        accountId:
+          type: string
+        externalAccount:
+          type: string
+    UpdateBeneficiaryRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - TRUSTED
+            - INACTIVE
+    CreateCardRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - accountId
+        - type
+        - spendingLimit
+        - currency
+      properties:
+        accountId:
+          type: string
+        type:
+          type: string
+          enum:
+            - PHYSICAL
+            - VIRTUAL
+        spendingLimit: *a9
+        currency: *a8
+    CardLimitRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - spendingLimit
+      properties:
+        spendingLimit: *a9
+    CreateScheduledPaymentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fromAccountId
+        - beneficiaryId
+        - amount
+        - currency
+        - executeAt
+      properties:
+        fromAccountId:
+          type: string
+        beneficiaryId:
+          type: string
+        amount: *a9
+        currency: *a8
+        executeAt:
+          type: string
+          format: date-time
+    UpdateScheduledPaymentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        amount: *a9
+        executeAt:
+          type: string
+          format: date-time
+    CreateStandingOrderRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fromAccountId
+        - beneficiaryId
+        - amount
+        - currency
+        - frequency
+        - nextExecutionAt
+      properties:
+        fromAccountId:
+          type: string
+        beneficiaryId:
+          type: string
+        amount: *a9
+        currency: *a8
+        frequency:
+          type: string
+          enum:
+            - WEEKLY
+            - MONTHLY
+            - QUARTERLY
+            - ANNUALLY
+        nextExecutionAt:
+          type: string
+          format: date-time
+    UpdateStandingOrderRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        amount: *a9
+        frequency:
+          type: string
+          enum:
+            - WEEKLY
+            - MONTHLY
+            - QUARTERLY
+            - ANNUALLY
+        nextExecutionAt:
+          type: string
+          format: date-time
+    CreateDirectDebitRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - accountId
+        - merchant
+        - mandateReference
+        - amount
+        - currency
+      properties:
+        accountId:
+          type: string
+        merchant:
+          type: string
+          minLength: 1
+        mandateReference:
+          type: string
+          minLength: 1
+        amount: *a9
+        currency: *a8
+    UpdateDirectDebitRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        amount: *a9
+    FxQuoteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - from
+        - to
+        - amount
+      properties:
+        from: *a8
+        to: *a8
+        amount: *a9
+    NotificationPreferencesRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        transactionAlerts:
+          type: boolean
+        fraudAlerts:
+          type: boolean
+        marketing:
+          type: boolean
+        channels:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - EMAIL
+              - SMS
+              - PUSH
+    DisputeStatusRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - UNDER_REVIEW
+            - RESOLVED
+            - REJECTED
+    DisputeEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - description
+      properties:
+        type:
+          type: string
+          enum:
+            - RECEIPT
+            - SCREENSHOT
+            - CUSTOMER_STATEMENT
+            - OTHER
+        description:
+          type: string
+          minLength: 1
+    AdminCreateCredentialRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - role
+      if:
+        properties:
+          role:
+            const: CUSTOMER
+      then:
+        required:
+          - customerId
+      properties:
+        role:
+          type: string
+          enum:
+            - CUSTOMER
+            - ADMIN
+        customerId:
+          type: string
+  responses:
+    BadRequest:
+      description: The request is malformed or violates a schema.
+      headers: &a10
+        X-Demo-Run-Id: *a1
+        X-Request-Id: *a2
+        X-RateLimit-Limit: *a3
+        X-RateLimit-Remaining: *a4
+        X-RateLimit-Reset: *a5
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: A valid API key is required.
+      headers: *a10
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: The principal lacks permission.
+      headers: *a10
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The resource does not exist or is not visible.
+      headers: *a10
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: A state transition, uniqueness rule, or idempotency reservation conflicted.
+      headers: *a10
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: The run-and-credential rate limit was exceeded.
+      headers:
+        X-Demo-Run-Id: *a1
+        X-Request-Id: *a2
+        X-RateLimit-Limit: *a3
+        X-RateLimit-Remaining: *a4
+        X-RateLimit-Reset: *a5
+        Retry-After:
+          $ref: "#/components/headers/Retry-After"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ServiceUnavailable:
+      description: A bounded run or idempotency store reached capacity.
+      headers: *a10
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

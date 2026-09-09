@@ -1,0 +1,39 @@
+{
+  "name": "@intergalactic/support-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deterministic Support REST API for the Postman Fabric Gateway showcase",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build:openapi": "node scripts/build-openapi.mjs",
+    "check:openapi": "node scripts/check-openapi.mjs",
+    "build": "npm run build:openapi && npm run check:openapi && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "tsc -p tsconfig.test.json",
+    "lint:openapi": "spectral lint --ruleset .spectral.yaml openapi/openapi.yaml",
+    "test": "vitest run --coverage",
+    "verify": "npm run build:openapi && npm run check:openapi && npm run lint:openapi && npm run typecheck && npm test && tsc -p tsconfig.json"
+  },
+  "engines": { "node": ">=20.0.0" },
+  "dependencies": {
+    "@intergalactic/demo-fixtures": "2.0.0",
+    "@intergalactic/support-contract": "1.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "express": "^5.2.1",
+    "json-canonicalize": "^1.2.0",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "^6.11.0",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "tsx": "4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "5.0.0"
+  }
+}

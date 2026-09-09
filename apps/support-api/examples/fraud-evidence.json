@@ -1,0 +1,12 @@
+{
+  "type": "FRAUD_ASSESSMENT",
+  "referenceId": "FRA-90142",
+  "source": "fraud-api",
+  "summary": "Deterministic fraud assessment for TX-1042.",
+  "facts": {
+    "assessmentId": "FRA-90142",
+    "riskScore": 82,
+    "riskLevel": "high",
+    "recommendation": "REQUIRE_CUSTOMER_VERIFICATION"
+  }
+}

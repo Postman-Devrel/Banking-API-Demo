@@ -1,0 +1,19 @@
+{
+  "name": "@intergalactic/fraud-contract",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Canonical schemas, operations, and OpenAPI document for the deterministic Fraud API",
+  "type": "commonjs",
+  "exports": {
+    "./schemas": { "types": "./schemas.d.ts", "default": "./schemas.js" },
+    "./public-schemas": { "types": "./publicSchemas.d.ts", "default": "./publicSchemas.js" },
+    "./operations": { "types": "./operations.d.ts", "default": "./operations.js" },
+    "./openapi": { "types": "./openapi.d.ts", "default": "./openapi.js" }
+  },
+  "scripts": {
+    "build": "node -e \"require('./openapi')\"",
+    "test": "node -e \"const o=require('./operations'); if(o.length!==6||new Set(o.map(x=>x.operationId)).size!==6) process.exit(1)\"",
+    "verify": "npm run build && npm test"
+  },
+  "engines": { "node": ">=20.0.0" }
+}

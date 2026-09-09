@@ -1,0 +1,686 @@
+openapi: 3.1.0
+info:
+  title: Intergalactic Fraud API
+  version: 1.1.0
+  description: Deterministic, run-scoped fraud-risk assessments for the Postman Fabric Gateway comparison. Assessments are
+    advisory and never execute banking actions.
+  contact:
+    name: Postman Fabric Gateway Demo Maintainers
+  license:
+    name: ISC
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local deterministic demo service
+tags:
+  - name: Fraud Assessments
+    description: Create and inspect advisory risk assessments.
+  - name: Demo Control
+    description: Administrator-only, non-production fault and reset controls.
+  - name: System
+    description: Service health and contract discovery.
+security:
+  - ApiKeyAuth: []
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      operationId: checkFraudHealth
+      summary: Check Fraud API health
+      description: Check Fraud API health
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Check Fraud API health succeeded.
+          headers:
+            X-Request-Id: &a1
+              $ref: "#/components/headers/X-Request-Id"
+            X-Demo-Run-Id: &a2
+              $ref: "#/components/headers/X-Demo-Run-Id"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+      security: []
+  /openapi.yaml:
+    get:
+      tags:
+        - System
+      operationId: getFraudOpenApi
+      summary: Download the Fraud API contract
+      description: Download the Fraud API contract
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Download the Fraud API contract succeeded.
+          headers:
+            X-Request-Id: *a1
+            X-Demo-Run-Id: *a2
+          content:
+            application/yaml:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+      security: []
+  /v1/fraud/assessments:
+    post:
+      tags:
+        - Fraud Assessments
+      operationId: createFraudAssessment
+      summary: Assess a transaction for fraud risk
+      description: Assess a transaction for fraud risk
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: An identical assessment already exists and was returned.
+          headers: &a3
+            X-Request-Id: *a1
+            X-Demo-Run-Id: *a2
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+            X-Fraud-Attempt:
+              $ref: "#/components/headers/X-Fraud-Attempt"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FraudAssessment"
+        "201":
+          description: Assess a transaction for fraud risk succeeded.
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FraudAssessment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFraudAssessmentRequest"
+            example:
+              transactionId: TX-1042
+              customerId: CUS-1001
+              amount: 3750
+              currency: COSMIC_COINS
+              occurredAt: 2026-08-29T21:14:00.000Z
+              beneficiary:
+                name: Gary Galaxy
+                accountId: "2"
+              payment:
+                method: bank_transfer
+              context:
+                customerDisputed: true
+                reviewChannel: support_case
+                transactionChannel: WEB
+                deviceTrusted: false
+                location: Europa Station
+  /v1/fraud/assessments/{assessmentId}:
+    get:
+      tags:
+        - Fraud Assessments
+      operationId: getFraudAssessment
+      summary: Retrieve a fraud assessment
+      description: Retrieve a fraud assessment
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/DemoRunId"
+        - name: assessmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+      responses:
+        "200":
+          description: Retrieve a fraud assessment succeeded.
+          headers:
+            X-Request-Id: *a1
+            X-Demo-Run-Id: *a2
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FraudAssessment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /_demo/v1/runs/{runId}/faults:
+    put:
+      tags:
+        - Demo Control
+      operationId: configureFraudFaults
+      summary: Configure deterministic local faults
+      description: Configure deterministic local faults. Available only outside production and requires the demo administrator key.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Configure deterministic local faults succeeded.
+          headers:
+            X-Request-Id: *a1
+            X-Demo-Run-Id: *a2
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FaultConfiguration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-demo-only: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigureFraudFaultsRequest"
+  /_demo/v1/runs/{runId}/reset:
+    post:
+      tags:
+        - Demo Control
+      operationId: resetFraudRun
+      summary: Reset a deterministic Fraud API run
+      description: Reset a deterministic Fraud API run. Available only outside production and requires the demo administrator key.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Reset a deterministic Fraud API run succeeded.
+          headers:
+            X-Request-Id: *a1
+            X-Demo-Run-Id: *a2
+            Idempotency-Replayed:
+              $ref: "#/components/headers/Idempotency-Replayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      x-demo-only: true
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Fraud API or demo-administrator credential.
+  parameters:
+    DemoRunId:
+      name: X-Demo-Run-Id
+      in: header
+      required: false
+      description: Isolates Direct and Fabric lane state.
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{1,64}$
+        default: default
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: End-to-end correlation identifier; generated when omitted.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Required for mutations. Exact replays return the original response; conflicting input returns 409.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+  headers:
+    X-Request-Id:
+      description: Request correlation identifier.
+      schema:
+        type: string
+    X-Demo-Run-Id:
+      description: Selected demo run.
+      schema:
+        type: string
+    X-Fraud-Attempt:
+      description: Valid assessment attempt number within the selected run.
+      schema:
+        type: integer
+        minimum: 1
+    Idempotency-Replayed:
+      description: True when the original response was replayed.
+      schema:
+        type: string
+        const: "true"
+    Retry-After:
+      description: Whole seconds before retrying.
+      schema:
+        type: integer
+        minimum: 1
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          const: ok
+        service:
+          const: fraud-api
+        version:
+          const: 1.1.0
+    FraudAssessment:
+      type: object
+      additionalProperties: false
+      required:
+        - assessmentId
+        - transactionId
+        - risk
+        - signals
+        - recommendation
+        - model
+        - assessedAt
+      properties:
+        assessmentId:
+          type: string
+          pattern: ^FRA-
+        transactionId:
+          type: string
+        risk:
+          type: object
+          additionalProperties: false
+          required:
+            - score
+            - level
+          properties:
+            score:
+              type: integer
+              minimum: 0
+              maximum: 100
+            level:
+              type: string
+              enum:
+                - low
+                - medium
+                - high
+                - critical
+        signals:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - code
+              - severity
+              - description
+            properties:
+              code:
+                type: string
+                enum:
+                  - NEW_DEVICE
+                  - UNUSUAL_AMOUNT
+                  - LOCATION_MISMATCH
+                  - CUSTOMER_DISPUTED
+              severity:
+                type: string
+                enum:
+                  - low
+                  - medium
+                  - high
+              description:
+                type: string
+        recommendation:
+          type: object
+          additionalProperties: false
+          required:
+            - action
+            - permittedActions
+            - prohibitedActions
+            - reason
+          properties:
+            action:
+              type: string
+              enum:
+                - ALLOW
+                - REQUIRE_CUSTOMER_VERIFICATION
+                - ESCALATE_TO_FRAUD_TEAM
+                - BLOCK_TRANSACTION
+            permittedActions:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+                enum:
+                  - REQUEST_IDENTITY_VERIFICATION
+                  - ESCALATE_TO_FRAUD_TEAM
+            prohibitedActions:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+                enum:
+                  - ISSUE_IMMEDIATE_REFUND
+                  - CLOSE_DISPUTE_AS_RESOLVED
+            reason:
+              type: string
+        model:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - version
+          properties:
+            name:
+              const: demo-fraud-risk-model
+            version:
+              const: 1.1.0
+        assessedAt:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+            - retryable
+            - requestId
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            retryable:
+              type: boolean
+            requestId:
+              type: string
+            retryAfterMs:
+              type: integer
+              minimum: 1
+            details:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - field
+                  - issue
+                properties:
+                  field:
+                    type: string
+                  issue:
+                    type: string
+    FaultConfiguration:
+      type: object
+      additionalProperties: false
+      required:
+        - runId
+        - faults
+      properties:
+        runId:
+          type: string
+        faults:
+          type: object
+          additionalProperties: false
+          required:
+            - failFirstAssessment
+          properties:
+            failFirstAssessment:
+              type: boolean
+    RunSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - runId
+        - seedVersion
+        - assessments
+        - attempts
+        - faults
+      properties:
+        runId:
+          type: string
+        seedVersion:
+          const: fabric-fraud-v2
+        assessments:
+          type: integer
+          minimum: 0
+        attempts:
+          type: integer
+          minimum: 0
+        faults:
+          type: object
+          additionalProperties: false
+          required:
+            - failFirstAssessment
+          properties:
+            failFirstAssessment:
+              type: boolean
+    CreateFraudAssessmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - transactionId
+        - customerId
+        - amount
+        - currency
+        - occurredAt
+        - beneficiary
+        - payment
+        - context
+      properties:
+        transactionId: &a4
+          type: string
+          minLength: 1
+          maxLength: 64
+        customerId: *a4
+        amount:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        currency:
+          type: string
+          enum:
+            - COSMIC_COINS
+            - GALAXY_GOLD
+            - MOON_BUCKS
+        occurredAt:
+          type: string
+          format: date-time
+        beneficiary:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 120
+            accountId: *a4
+        payment:
+          type: object
+          additionalProperties: false
+          required:
+            - method
+          properties:
+            method:
+              type: string
+              enum:
+                - bank_transfer
+                - card
+                - wallet
+            cardPresent:
+              type: boolean
+          allOf:
+            - if:
+                properties:
+                  method:
+                    const: card
+                required:
+                  - method
+              then:
+                properties:
+                  cardPresent:
+                    type: boolean
+                required:
+                  - cardPresent
+        context:
+          type: object
+          additionalProperties: false
+          required:
+            - customerDisputed
+            - reviewChannel
+            - transactionChannel
+            - deviceTrusted
+            - location
+          properties:
+            customerDisputed:
+              type: boolean
+            reviewChannel:
+              type: string
+              enum:
+                - support_case
+                - automated_review
+                - manual_review
+            transactionChannel:
+              type: string
+              enum:
+                - MOBILE_APP
+                - WEB
+                - API
+                - BRANCH
+            deviceTrusted:
+              type: boolean
+            location:
+              type: string
+              minLength: 1
+              maxLength: 120
+    ConfigureFraudFaultsRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - failFirstAssessment
+      properties:
+        failFirstAssessment:
+          type: boolean
+  responses:
+    BadRequest:
+      description: Request context, headers, or JSON body are invalid.
+      headers: &a5
+        X-Request-Id: *a1
+        X-Demo-Run-Id: *a2
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: A valid API key is required.
+      headers: *a5
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: The credential cannot perform this operation.
+      headers: *a5
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The assessment does not exist in the selected run.
+      headers: *a5
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: The idempotency key is already associated with different input.
+      headers: *a5
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: The deterministic fail-first fault was applied; the caller owns the retry.
+      headers:
+        X-Request-Id: *a1
+        X-Demo-Run-Id: *a2
+        X-Fraud-Attempt:
+          $ref: "#/components/headers/X-Fraud-Attempt"
+        Retry-After:
+          $ref: "#/components/headers/Retry-After"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ServiceUnavailable:
+      description: Run or idempotency capacity was reached.
+      headers: *a5
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
