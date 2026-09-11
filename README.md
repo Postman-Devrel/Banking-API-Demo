@@ -1,84 +1,131 @@
-# Intergalactic Banking, Fraud, and Support Platform
+# Fabric Banking Demo Services
 
-A deterministic Banking REST API and MCP server, Fraud REST API, and Support REST API and MCP server for comparing direct agent tool usage with the same task routed through Postman Fabric Gateway.
+Local Banking, Fraud, and Support services for the Fabric Gateway comparison demo. It provides two MCP servers and three REST APIs with a deterministic shared dataset, so Direct and Fabric routes can run the same investigation against isolated data.
 
-## Repository layout
+## Start here
 
-```text
-apps/
-  banking-api/       Express REST API with 56 operations
-  banking-mcp/       TypeScript Streamable HTTP MCP server with 50 customer tools
-  fraud-api/         TypeScript REST API with deterministic fraud and retry behavior
-  support-api/       TypeScript support case and investigation REST API
-  support-mcp/       TypeScript Streamable HTTP MCP server with 53 support tools
-packages/
-  demo-fixtures/     Canonical cross-service seed scenarios and integrity checks
-  banking-contract/  Shared operation metadata, JSON Schemas, and OpenAPI generator
-  fraud-contract/    Shared Fraud operation metadata, schemas, and OpenAPI generator
-  support-contract/  Shared Support operation metadata, schemas, and OpenAPI generator
-```
-
-Each REST API and its MCP server share a canonical contract. Tool schemas and names are generated from those contracts, so the MCP surfaces cannot silently drift from their APIs.
-
-## Seeded demo world
-
-Every authenticated run receives an independent copy of a coherent dataset: nine Banking transactions, three completed Fraud assessments, and five Support cases spanning the full lifecycle. Cross-service identifiers, amounts, currencies, and timestamps are validated by the shared `@intergalactic/demo-fixtures` package.
-
-`CASE-2042` / `TX-1042` remains the primary live task. It begins with a customer report but no Banking dispute, Fraud assessment, or attached Support evidence, allowing the Direct and Fabric lanes to perform the same meaningful investigation. See the [Demo Seed Catalogue](docs/Demo-Seed-Catalog.md) for all starting records.
-
-## Run locally
-
-Requires Node.js 20 or newer.
+You need Node.js 20 or later.
 
 ```bash
 npm install
 npm run dev
 ```
 
-This starts:
+That starts every service:
 
-- Banking API: `http://127.0.0.1:3000`
-- Banking MCP: `http://127.0.0.1:3100/mcp`
-- Fraud API: `http://127.0.0.1:8080`
-- Support API: `http://127.0.0.1:8090`
-- Support MCP: `http://127.0.0.1:3200/mcp`
+| Service | Local URL | Purpose |
+| --- | --- | --- |
+| Banking API | `http://127.0.0.1:3000` | Accounts, transactions, disputes, cards, payments, and FX |
+| Banking MCP | `http://127.0.0.1:3100/mcp` | Customer-safe Banking tools for an agent |
+| Fraud API | `http://127.0.0.1:8080` | Fraud assessments and the controlled retry scenario |
+| Support API | `http://127.0.0.1:8090` | Customer cases, evidence, verifications, and notes |
+| Support MCP | `http://127.0.0.1:3200/mcp` | Investigation tools for an agent |
 
-The local Banking MCP credential is `banking-mcp-demo-key`; the Support MCP credential is `support-mcp-demo-key`. Use either the canonical header:
+To start just one service, use one of these instead:
 
-```text
-Authorization: Bearer <MCP credential>
+```bash
+npm run dev:api
+npm run dev:mcp
+npm run dev:fraud
+npm run dev:support
+npm run dev:support-mcp
 ```
 
-or the API-key convenience header:
+## How it fits the Gateway demo
 
-```text
-X-API-Key: <MCP credential>
+The comparison UI runs the same prompt two ways:
+
+- **Direct** connects to Banking MCP, Support MCP, and Fraud API itself. The agent holds separate credentials.
+- **Fabric** connects to one Fabric Gateway endpoint. Fabric holds and applies the upstream service credentials, and may expose a smaller or progressively discovered tool surface.
+
+Both routes use a run ID such as `direct-...` or `fabric-...`. A run gets its own seeded data, so the two routes do not affect each other.
+
+The main scenario begins with `CASE-2042`, linked to `TX-1042`. It is intentionally ready for an investigation: the agent can inspect the case and transaction, request a fraud assessment, add evidence, and request identity verification without starting from an empty system.
+
+## Credentials for local development
+
+These development-only values are the defaults in [`.env.example`](.env.example). Change them before deploying.
+
+| Use | Credential | Header |
+| --- | --- | --- |
+| Banking API customer | `1234` | `X-API-Key` |
+| Banking API admin | `admin-demo-key` | `X-API-Key` |
+| Banking MCP | `banking-mcp-demo-key` | `Authorization: Bearer ...` or `X-API-Key` |
+| Fraud API business | `fraud-demo-key` | `X-API-Key` |
+| Fraud API demo admin | `fraud-admin-demo-key` | `X-API-Key` |
+| Support API business | `support-demo-key` | `X-API-Key` |
+| Support API admin | `support-admin-demo-key` | `X-API-Key` |
+| Support MCP | `support-mcp-demo-key` | `Authorization: Bearer ...` or `X-API-Key` |
+
+MCP credentials are separate from their downstream API credentials. The MCP servers apply their API credentials internally; an agent should never receive them in a tool schema or result.
+
+## Try it
+
+Check that the Banking API is available:
+
+```bash
+curl http://127.0.0.1:3000/health
 ```
 
-Each MCP credential is intentionally separate from its downstream API credential. The servers supply downstream credentials privately; they are absent from `tools/list`, tool arguments, results, and logs.
+Read the primary transaction in an isolated demo run:
 
-Use `X-Demo-Run-Id: direct-demo` or `fabric-demo` on the MCP request to isolate comparison lanes. Use the same `X-Request-Id` when replaying a logical action: the MCP server derives a deterministic downstream idempotency key from the request ID, operation, and canonical arguments.
+```bash
+curl \
+  -H 'X-API-Key: 1234' \
+  -H 'X-Demo-Run-Id: direct-example' \
+  http://127.0.0.1:3000/api/v1/transactions/TX-1042
+```
 
-## MCP surface
+Connect an MCP client to `http://127.0.0.1:3100/mcp` or `http://127.0.0.1:3200/mcp` using the corresponding MCP credential above. Streamable HTTP MCP clients should send the credential on their connection request.
 
-The server exposes 50 customer-safe tools across accounts, transactions, customers, beneficiaries, cards, scheduled payments, standing orders, direct debits, statements, FX, notification preferences, disputes, and audit events.
+## Configuration and deployment
 
-Administrative credential creation, demo reset, dispute status administration, service health, OpenAPI download, and legacy credential creation stay REST-only. In particular, the model cannot supply credentials, idempotency keys, or run identifiers as tool arguments.
+Copy the environment template when running services independently or outside the default local setup:
 
-Every result includes concise text plus structured JSON. Both Banking and Support MCP keep operational telemetry in server logs rather than adding custom result `_meta`; this avoids using agent context for data already captured by Fabric Gateway. Both direct MCP servers intentionally perform one downstream attempt, so Gateway-managed retries remain visible in the comparison.
+```bash
+cp .env.example .env
+```
 
-The Fraud API remains REST-only so the comparison can demonstrate a mixed MCP and API task. It uses `fraud-demo-key` for business calls and a separate `fraud-admin-demo-key` for local fault, reset, and safe run-summary controls. See [Fraud API documentation](apps/fraud-api/README.md) and the [revised Fraud MVP specification](docs/Fraud-API-MVP-Spec.md).
+`npm run dev` uses the local defaults. In production, set `NODE_ENV=production` and supply explicit, unique credentials and service URLs. The deployment service must listen on the platform-provided `PORT`; the individual service Dockerfiles and Railway service settings should select the appropriate app command:
 
-The Support API contains 62 operations; its MCP publishes 53 contract-selected investigation tools. Its canonical `CASE-2042` fixture is linked to Banking transaction `TX-1042` and begins without Fraud evidence so the agent must perform the investigation. See [Support API documentation](apps/support-api/README.md), [Support MCP documentation](apps/support-mcp/README.md), the [Support API specification](docs/Support-API-Spec.md), and the [Demo Seed Catalogue](docs/Demo-Seed-Catalog.md).
+```bash
+npm run start:api
+npm run start:mcp
+npm run start:fraud
+npm run start:support
+npm run start:support-mcp
+```
 
-See [Banking API documentation](apps/banking-api/README.md) and [Banking MCP documentation](apps/banking-mcp/README.md) for Banking details.
+For MCP deployments, also set the relevant upstream URL: `BANKING_API_BASE_URL` for Banking MCP or `SUPPORT_API_BASE_URL` for Support MCP. See [`.env.example`](.env.example) for all available variables.
 
-## Verification
+## Project layout
+
+```text
+apps/
+  banking-api/    Banking REST API
+  banking-mcp/    Banking Streamable HTTP MCP server
+  fraud-api/      Fraud REST API
+  support-api/    Support REST API
+  support-mcp/    Support Streamable HTTP MCP server
+packages/
+  *-contract/     Route metadata, JSON Schemas, and OpenAPI generation
+  demo-fixtures/  Shared seeded scenarios and integrity checks
+```
+
+REST APIs and their MCP servers share contracts. Tool names and schemas are generated from those contracts, preventing the MCP surface from drifting away from the API.
+
+## Verify changes
 
 ```bash
 npm run verify
 ```
 
-This regenerates and checks all OpenAPI contracts, verifies the cross-service seed catalogue and all Banking and Support operation and tool catalogues, runs both MCP protocol suites, verifies Fraud retry behavior and cross-service lane determinism, enforces coverage thresholds, type-checks TypeScript, and builds the TypeScript services.
+This checks contracts and OpenAPI generation, seeded data, API and MCP tests, retry behavior, type safety, builds, and coverage.
 
-Configuration defaults are documented in [.env.example](.env.example). Production mode requires explicit credentials for Banking MCP/downstream access, Fraud, Support, and Support MCP/downstream access.
+For API-level detail, see the individual service readmes:
+
+- [Banking API](apps/banking-api/README.md)
+- [Banking MCP](apps/banking-mcp/README.md)
+- [Fraud API](apps/fraud-api/README.md)
+- [Support API](apps/support-api/README.md)
+- [Support MCP](apps/support-mcp/README.md)
