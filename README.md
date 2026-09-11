@@ -1,6 +1,8 @@
-# Fabric Banking Demo Services
+# Intergalactic Banking API
 
-Local Banking, Fraud, and Support services for the Fabric Gateway comparison demo. It provides two MCP servers and three REST APIs with a deterministic shared dataset, so Direct and Fabric routes can run the same investigation against isolated data.
+This is a demo Banking API for managing customer accounts, transactions, beneficiaries, debit cards, scheduled payments, standing orders, direct debits, statements, foreign exchange, notifications, and disputes. It comes with a Banking MCP server that exposes customer-safe Banking tools to MCP clients.
+
+This monorepo also includes a Fraud API for assessing transactions for fraud, plus a Support API and Support MCP server for managing customer requests and investigations. The services are seeded with coherent demo data when a run starts and use in-memory storage, not a real database.
 
 ## Start here
 
@@ -31,14 +33,11 @@ npm run dev:support
 npm run dev:support-mcp
 ```
 
-## How it fits the Gateway demo
+## Using it in an agent demo
 
-The comparison UI runs the same prompt two ways:
+An agent can use the two MCP servers for Banking and Support capabilities, and call the Fraud API directly for risk assessments. The services intentionally keep credentials and state boundaries explicit, making them suitable for testing different agent architectures and tool-routing approaches.
 
-- **Direct** connects to Banking MCP, Support MCP, and Fraud API itself. The agent holds separate credentials.
-- **Fabric** connects to one Fabric Gateway endpoint. Fabric holds and applies the upstream service credentials, and may expose a smaller or progressively discovered tool surface.
-
-Both routes use a run ID such as `direct-...` or `fabric-...`. A run gets its own seeded data, so the two routes do not affect each other.
+Use a run ID such as `demo-example` for independent seeded data. Every run gets its own copy of the dataset, so experiments do not affect one another.
 
 The main scenario begins with `CASE-2042`, linked to `TX-1042`. It is intentionally ready for an investigation: the agent can inspect the case and transaction, request a fraud assessment, add evidence, and request identity verification without starting from an empty system.
 
@@ -72,7 +71,7 @@ Read the primary transaction in an isolated demo run:
 ```bash
 curl \
   -H 'X-API-Key: 1234' \
-  -H 'X-Demo-Run-Id: direct-example' \
+  -H 'X-Demo-Run-Id: demo-example' \
   http://127.0.0.1:3000/api/v1/transactions/TX-1042
 ```
 
