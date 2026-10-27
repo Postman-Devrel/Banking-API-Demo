@@ -1,6 +1,7 @@
 import type { McpConfig, RequestScope } from './types.js';
 
 const RUN_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+export const CONVERSATION_ID_META_KEY = 'com.postman.fabric/conversation-id';
 
 function positiveInteger(value: string | undefined, fallback: number, name: string): number {
   const parsed = value === undefined ? fallback : Number(value);
@@ -46,4 +47,13 @@ export function resolveRequestScope(request: Request | undefined, defaultRunId: 
   const inboundRequestId = request?.headers.get('x-request-id')?.trim() || undefined;
   if (inboundRequestId && inboundRequestId.length > 128) throw new Error('X-Request-Id must be at most 128 characters');
   return inboundRequestId ? { runId, inboundRequestId } : { runId };
+}
+
+export function resolveToolScope(scope: RequestScope, meta: Record<string, unknown> | undefined): RequestScope {
+  const conversationId = meta?.[CONVERSATION_ID_META_KEY];
+  if (conversationId === undefined) return scope;
+  if (typeof conversationId !== 'string' || !RUN_ID_PATTERN.test(conversationId)) {
+    throw new Error('MCP conversation ID must match [A-Za-z0-9_-]{1,64}');
+  }
+  return { ...scope, runId: conversationId };
 }

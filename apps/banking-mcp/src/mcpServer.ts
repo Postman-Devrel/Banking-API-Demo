@@ -6,6 +6,7 @@ import {
 } from '@modelcontextprotocol/server';
 import { BankingApiClient } from './bankingApiClient.js';
 import { toolDefinitions } from './catalog.js';
+import { resolveToolScope } from './config.js';
 import type { McpConfig, RequestScope, ToolDefinition } from './types.js';
 
 export interface SafeLogger {
@@ -47,7 +48,7 @@ export function createBankingMcpServer(
       tool.name,
       {
         title: tool.operation.summary,
-        description: `${tool.operation.description} Uses the authenticated customer and selected demo run; credentials and run identifiers are supplied by the server, not as tool arguments.`,
+        description: `${tool.operation.description} Uses the authenticated customer and selected demo run; credentials and run identifiers are supplied through protected connection or protocol metadata, not model-visible tool arguments.`,
         inputSchema: fromJsonSchema(tool.inputJsonSchema as Parameters<typeof fromJsonSchema>[0]),
         outputSchema: fromJsonSchema(tool.outputJsonSchema as Parameters<typeof fromJsonSchema>[0]),
         annotations: annotationsFor(tool),
@@ -58,7 +59,8 @@ export function createBankingMcpServer(
         }
       },
       async (args, context): Promise<CallToolResult> => {
-        const result = await client.execute(tool.operation, args, scope, context.mcpReq.id);
+        const toolScope = resolveToolScope(scope, context.mcpReq._meta);
+        const result = await client.execute(tool.operation, args, toolScope, context.mcpReq.id);
         logger.info({
           event: 'banking_mcp_tool_call',
           tool: tool.name,

@@ -1,6 +1,7 @@
 import { fromJsonSchema, McpServer, type CallToolResult, type ToolAnnotations } from '@modelcontextprotocol/server';
 import { SupportApiClient } from './supportApiClient.js';
 import { toolDefinitions } from './catalog.js';
+import { resolveToolScope } from './config.js';
 import type { McpConfig, RequestScope, ToolDefinition } from './types.js';
 
 export interface SafeLogger { info(event: Record<string, unknown>): void; error(event: Record<string, unknown>): void }
@@ -21,12 +22,13 @@ export function createSupportMcpServer(config: McpConfig, scope: RequestScope, d
       tool.name,
       {
         title: tool.operation.summary,
-        description: `${tool.operation.description} Credentials, correlation headers, run identifiers, and idempotency keys are never tool arguments.`,
+        description: `${tool.operation.description} Credentials, correlation data, run identifiers, and idempotency keys are supplied through protected connection or protocol metadata, never model-visible tool arguments.`,
         inputSchema: fromJsonSchema(tool.inputJsonSchema as Parameters<typeof fromJsonSchema>[0]),
         outputSchema: fromJsonSchema(tool.outputJsonSchema as Parameters<typeof fromJsonSchema>[0]), annotations: annotations(tool)
       },
       async (args, context): Promise<CallToolResult> => {
-        const result = await client.execute(tool.operation, args, scope, context.mcpReq.id);
+        const toolScope = resolveToolScope(scope, context.mcpReq._meta);
+        const result = await client.execute(tool.operation, args, toolScope, context.mcpReq.id);
         logger.info({ event: 'support_mcp_tool_call', tool: tool.name, ok: result.ok, ...result.telemetry });
         if (!result.ok) return {
           isError: true, content: [{ type: 'text', text: `${result.error.code}: ${result.error.message}` }], structuredContent: { error: result.error }

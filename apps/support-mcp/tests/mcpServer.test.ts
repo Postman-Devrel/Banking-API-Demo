@@ -28,9 +28,13 @@ async function initialize(harness: Awaited<ReturnType<typeof protocolHarness>>) 
 
 describe('Support MCP protocol server', () => {
   it('advertises 53 annotated tools, executes one, and keeps telemetry internal', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ cases: [], page: { limit: 25, nextCursor: null, hasMore: false } }), {
-      status: 200, headers: { 'X-Request-Id': 'support-1' }
-    }));
+    let downstreamRunId: string | null = null;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      downstreamRunId = new Headers(init?.headers).get('x-demo-run-id');
+      return new Response(JSON.stringify({ cases: [], page: { limit: 25, nextCursor: null, hasMore: false } }), {
+        status: 200, headers: { 'X-Request-Id': 'support-1' }
+      });
+    });
     const config = loadConfig({ SUPPORT_API_BASE_URL: 'http://support.test', SUPPORT_API_KEY: 'secret', SUPPORT_MCP_API_KEY: 'mcp-secret' });
     const logger = { info: vi.fn(), error: vi.fn() };
     const server = createSupportMcpServer(config, { runId: 'fabric-lane', inboundRequestId: 'compare-1' }, {
@@ -52,9 +56,16 @@ describe('Support MCP protocol server', () => {
     expect(JSON.stringify(tools)).not.toContain('secret');
     expect(JSON.stringify(tools)).not.toContain('com.postman.fabric/telemetry');
 
-    const called = await harness.request({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'support_list_cases', arguments: { limit: 25 } } });
+    const called = await harness.request({
+      jsonrpc: '2.0', id: 3, method: 'tools/call',
+      params: {
+        name: 'support_list_cases', arguments: { limit: 25 },
+        _meta: { 'com.postman.fabric/conversation-id': 'payload-lane' }
+      }
+    });
     expect(called).toMatchObject({ result: { structuredContent: { cases: [], page: { limit: 25, nextCursor: null, hasMore: false } } } });
     expect(JSON.stringify(called)).not.toContain('"_meta"');
+    expect(downstreamRunId).toBe('payload-lane');
     expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({ tool: 'support_list_cases', ok: true, attempts: 1, requestId: 'support-1' }));
     await harness.clientTransport.close();
   });

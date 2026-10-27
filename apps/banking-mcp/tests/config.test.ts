@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadConfig, resolveRequestScope } from '../src/config.js';
+import { loadConfig, resolveRequestScope, resolveToolScope } from '../src/config.js';
 
 describe('configuration', () => {
   it('provides documented local demo defaults', () => {
@@ -11,6 +11,18 @@ describe('configuration', () => {
       defaultDemoRunId: 'default',
       port: 3100
     });
+  });
+
+  it('prefers a valid MCP payload conversation ID over the connection scope', () => {
+    expect(resolveToolScope(
+      { runId: 'header-lane', inboundRequestId: 'request-1' },
+      { 'com.postman.fabric/conversation-id': 'payload-lane' }
+    )).toEqual({ runId: 'payload-lane', inboundRequestId: 'request-1' });
+    expect(resolveToolScope({ runId: 'header-lane' }, undefined)).toEqual({ runId: 'header-lane' });
+    expect(() => resolveToolScope(
+      { runId: 'header-lane' },
+      { 'com.postman.fabric/conversation-id': 'bad run' }
+    )).toThrow('MCP conversation ID');
   });
 
   it('requires both secrets in production', () => {

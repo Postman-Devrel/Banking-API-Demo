@@ -19,7 +19,7 @@ Development defaults are disabled for credentials when `NODE_ENV=production`.
 ## Request headers
 
 - `Authorization: Bearer <MCP_API_KEY>` is canonical. `X-API-Key` is also accepted for clients that expose API-key auth directly.
-- `X-Demo-Run-Id` selects an isolated REST API namespace and must match `[A-Za-z0-9_-]{1,64}`.
+- `com.postman.fabric/conversation-id` in the MCP `tools/call` request `_meta` selects the isolated REST API namespace and must match `[A-Za-z0-9_-]{1,64}`. Direct HTTP clients may continue using `X-Demo-Run-Id` as a compatibility fallback; payload metadata takes precedence.
 - `X-Request-Id` correlates the MCP call with the downstream API call and makes mutation idempotency deterministic. One is generated when omitted.
 
 Authentication happens before request-context validation or downstream access. No request retries occur inside this server; `attempts` is therefore `1`, allowing Gateway-managed retries to remain measurable.

@@ -29,9 +29,13 @@ async function protocolHarness(server: ReturnType<typeof createBankingMcpServer>
 
 describe('Banking MCP protocol server', () => {
   it('advertises 50 annotated contract-generated tools and executes one', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    let downstreamRunId: string | null = null;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      downstreamRunId = new Headers(init?.headers).get('x-demo-run-id');
+      return new Response(JSON.stringify({
       accounts: [], page: { limit: 25, nextCursor: null, hasMore: false }
-    }), { status: 200, headers: { 'X-Request-Id': 'banking-1' } }));
+      }), { status: 200, headers: { 'X-Request-Id': 'banking-1' } });
+    });
     const config = loadConfig({ BANKING_API_BASE_URL: 'http://banking.test', BANKING_API_KEY: 'secret', MCP_API_KEY: 'mcp-secret' });
     const logger = { info: vi.fn(), error: vi.fn() };
     const server = createBankingMcpServer(config, { runId: 'fabric-lane', inboundRequestId: 'compare-1' }, {
@@ -62,7 +66,10 @@ describe('Banking MCP protocol server', () => {
 
     const called = await harness.request({
       jsonrpc: '2.0', id: 3, method: 'tools/call',
-      params: { name: 'banking_list_accounts', arguments: { limit: 25 } }
+      params: {
+        name: 'banking_list_accounts', arguments: { limit: 25 },
+        _meta: { 'com.postman.fabric/conversation-id': 'payload-lane' }
+      }
     });
     expect(called).toMatchObject({
       result: {
@@ -70,6 +77,7 @@ describe('Banking MCP protocol server', () => {
       }
     });
     expect((called as { result: Record<string, unknown> }).result).not.toHaveProperty('_meta');
+    expect(downstreamRunId).toBe('payload-lane');
     expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({ tool: 'banking_list_accounts', ok: true, attempts: 1 }));
     await harness.clientTransport.close();
   });

@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { loadConfig, resolveRequestScope } from '../src/config.js';
+import { loadConfig, resolveRequestScope, resolveToolScope } from '../src/config.js';
 
 describe('Support MCP configuration', () => {
   it('provides documented local defaults', () => {
     expect(loadConfig({})).toMatchObject({ supportApiBaseUrl: 'http://127.0.0.1:8090', supportApiKey: 'support-demo-key', mcpApiKey: 'support-mcp-demo-key', defaultDemoRunId: 'default', port: 3200 });
+  });
+
+  it('prefers a valid MCP payload conversation ID over the connection scope', () => {
+    expect(resolveToolScope(
+      { runId: 'header-lane', inboundRequestId: 'request-1' },
+      { 'com.postman.fabric/conversation-id': 'payload-lane' }
+    )).toEqual({ runId: 'payload-lane', inboundRequestId: 'request-1' });
+    expect(resolveToolScope({ runId: 'header-lane' }, undefined)).toEqual({ runId: 'header-lane' });
+    expect(() => resolveToolScope(
+      { runId: 'header-lane' },
+      { 'com.postman.fabric/conversation-id': 'bad run' }
+    )).toThrow('MCP conversation ID');
   });
   it('requires explicit distinct production secrets', () => {
     expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow('SUPPORT_API_KEY');
