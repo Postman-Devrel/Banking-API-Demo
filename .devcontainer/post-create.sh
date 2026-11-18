@@ -25,12 +25,3 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
 else
   echo "ANTHROPIC_API_KEY not set; add it as a Codespaces secret, or run: claude and log in"
 fi
-
-# Postman CLI: if POSTMAN_API_KEY is set, log in so `postman` commands work immediately.
-if [ -n "${POSTMAN_API_KEY:-}" ]; then
-  postman login --with-api-key "$POSTMAN_API_KEY" >/dev/null \
-    && echo "Postman CLI logged in" \
-    || echo "Postman login failed; run: postman login"
-else
-  echo "POSTMAN_API_KEY not set; add it as a Codespaces secret, or run: postman login"
-fi
