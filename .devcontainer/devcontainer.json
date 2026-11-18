@@ -1,0 +1,12 @@
+{
+  "name": "Intergalactic Banking Platform",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "node",
+  "containerEnv": {
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "forwardPorts": [3000, 3100, 3200, 8080, 8090],
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
+}
